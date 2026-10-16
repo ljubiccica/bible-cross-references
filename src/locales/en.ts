@@ -248,4 +248,6 @@ export const en = {
   'Cross-references · {name}': 'Cross-references · {name}',
   'Check your connection and try again.': 'Check your connection and try again.',
   '{name} could not be loaded.': '{name} could not be loaded.',
+  'Slovenian text: Chráska (1914), public-domain source digitized by dLib.si. OCR errors corrected for this app.':
+    'Slovenian text: Chráska (1914), public-domain source digitized by dLib.si. OCR errors corrected for this app.',
 } as const;

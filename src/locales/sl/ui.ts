@@ -249,4 +249,6 @@ export const sl = {
   'Cross-references · {name}': 'Svetopisemske povezave · {name}',
   'Check your connection and try again.': 'Preverite povezavo in poskusite znova.',
   '{name} could not be loaded.': 'Prevoda {name} ni bilo mogoče naložiti.',
+  'Slovenian text: Chráska (1914), public-domain source digitized by dLib.si. OCR errors corrected for this app.':
+    'Slovensko besedilo: Chráska (1914), izvirnik v javni domeni, digitaliziran na dLib.si. Napake OCR popravljene za to aplikacijo.',
 } satisfies Record<keyof typeof en, string>;

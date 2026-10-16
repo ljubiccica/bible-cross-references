@@ -242,11 +242,22 @@ genre colors by Drawing with Data's [Bible Fascinator](https://designs.drawingwi
 
 ### Local Slovenian OCR preview
 
-Choose **Slovenščina — Chráska 1914 (draft)** in the Bible selector, or open
-`/threads/?t=chr1914-sl&ref=Gen.1`. English remains available in the same selector.
-This is a partial local preview: unresolved slots show an OCR-review message, not an omission claim.
-The interface and reference names remain English. Cross-reference links still use the existing
-OpenBible/KJV coordinates; the Slovenian alignment and wording are not fully reviewed.
+Choose **Chráska 1914 (CHR)** under **Slovenščina** in the translation picker, or open
+`/threads/?t=chr1914-sl&ref=Gen.1`. BSB and KJV are listed under English.
+All 66 books and 31,102 canonical verse slots are populated. Slovenian book names,
+reference aliases and interface labels follow the selected translation. Text completeness
+and automated alignment checks do not certify an independently proofread edition.
+
+The [1914 dLib source](https://www.dlib.si/details/URN%3ANBN%3ASI%3Adoc-ME2U9X4P)
+is labeled with the [Public Domain Mark 1.0](https://creativecommons.org/publicdomain/mark/1.0/).
+The app credit reads: “Slovenian text: Chráska (1914), public-domain source digitized by
+dLib.si. OCR errors corrected for this app.”
+
+For maintainer review: this prepared dataset also includes wording and punctuation
+accepted during comparison against Biblija.net's 2017 spelling revision, including
+whole-passage approvals. The public-domain mark on the 1914 source does not establish
+the reuse status of all those adopted changes. Distribution metadata remains unverified;
+this is a local preview pending provenance review.
 
 To refresh the preview after editing the working TXT, run from the workspace root:
 

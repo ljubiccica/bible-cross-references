@@ -36,8 +36,8 @@ export const TRANSLATIONS: Readonly<Record<TranslationId, TranslationManifest>> 
   },
   'chr1914-sl': {
     id: 'chr1914-sl',
-    name: 'Slovenščina — Chráska 1914 (osnutek)',
-    abbreviation: 'CHR 1914 draft',
+    name: 'Chráska 1914',
+    abbreviation: 'CHR',
     language: 'sl',
     direction: 'ltr',
     versification: 'kjv',
@@ -45,8 +45,9 @@ export const TRANSLATIONS: Readonly<Record<TranslationId, TranslationManifest>> 
       name: 'Local OCR preview; distribution status unverified',
       url: 'https://www.dlib.si/',
     },
-    attribution: 'Slovenian text: Chráska 1914, local OCR draft.',
-    homepage: 'https://www.dlib.si/',
+    attribution:
+      'Slovenian text: Chráska (1914), public-domain source digitized by dLib.si. OCR errors corrected for this app.',
+    homepage: 'https://www.dlib.si/details/URN%3ANBN%3ASI%3Adoc-ME2U9X4P',
     access: 'bundled',
     previewVerseCount: 31102,
     previewNotice:
