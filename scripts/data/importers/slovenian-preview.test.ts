@@ -79,7 +79,8 @@ describe('Slovenian local preview', () => {
     ] as const) {
       const index = CANONICAL_VERSIFICATION.indexOf({ book, chapter, verse });
       expect(index).toBeDefined();
-      if (index !== undefined) expect(translation.verseText(index)).toMatch(new RegExp(`^${prefix}`));
+      if (index !== undefined)
+        expect(translation.verseText(index)).toMatch(new RegExp(`^${prefix}`));
     }
   });
   it('keeps English as the default and handles unknown selections', () => {

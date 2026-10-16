@@ -285,3 +285,5 @@ printed in parentheses is retained as source metadata, not as conflicting search
 ### Interface languages
 
 Selecting the Slovenian Bible also selects the Slovenian interface; selecting BSB restores English. Interface messages live in `src/locales/en.ts` and `src/locales/sl/ui.ts`, separate from Bible text and book labels. `src/locales/ui.ts` selects the catalog, interpolates messages, and handles plural forms. Number formatting follows the selected language. Stable book IDs and reference URLs are preserved.
+
+The prepared Slovenian JSON is bundled in this repository and checksum-pinned. Its source entry uses a repository-relative path rather than a download URL; restore the file from Git if it is missing or modified. The dLib record identifies the original source, not a download of this corrected JSON.
