@@ -1,0 +1,286 @@
+/* The footer's entry point. It is a button, dressed as the footer's other links: the same muted
+   color, the underline on the word alone (drawn through the mark it reads as a smudge), and the
+   separator carried with it, so that nothing dangles when the button is gone.
+
+   The padding gives a finger more to hit than the glyph. Unlike the link beside it, a button is an
+   atomic inline box, whose padding would make the footer's line taller; the negative margins hand
+   that height, and the width, straight back, so the line is no taller or wider for it. */
+.trigger {
+  margin: calc(var(--space-1) * -1);
+  padding: var(--space-1);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.trigger::before {
+  margin-inline-end: 0.45ch;
+  color: var(--color-text-muted);
+  content: '·';
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  color: var(--color-text);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-radius: var(--radius);
+}
+
+.triggerLabel {
+  margin-inline-start: 0.3em;
+  text-decoration: underline;
+}
+
+/* Already installed: the invitation has been taken, so it goes. The dialog stays reachable at
+   #install, which is all the installed app would ever need it for. */
+@media (display-mode: standalone),
+  (display-mode: minimal-ui),
+  (display-mode: window-controls-overlay) {
+  .trigger {
+    display: none;
+  }
+}
+
+/* The card itself. A dialog is given its own colors by the browser, so both are named here; the
+   rest of its text it inherits from the page, since it is mounted beside the page, not inside the
+   footer that opens it. */
+.dialog {
+  margin: auto;
+  padding: 0;
+  inline-size: min(27rem, calc(100vw - 2rem));
+  max-block-size: calc(100dvh - 2rem);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 0.875rem;
+  background: var(--color-surface);
+  box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.45);
+  color: var(--color-text);
+  opacity: 0;
+  translate: 0 0.75rem;
+  transition:
+    opacity 0.2s ease,
+    translate 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dialog[open] {
+  opacity: 1;
+  translate: none;
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    translate: 0 0.75rem;
+  }
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0);
+  transition: background-color 0.2s ease;
+}
+
+.dialog[open]::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    background: rgb(0 0 0 / 0);
+  }
+}
+
+.card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+}
+
+.close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  margin-inline-end: calc(var(--space-2) * -1);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.lede {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* Where the browser can install the app itself, one button is the whole guide; the steps below
+   stay for the reader who dismisses its prompt, or who came here for another device. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-background);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* The same segmented frame the header's controls wear: the detected device is already chosen, and
+   the other two are there for a reader on a shared link, or one about to switch devices. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.tab {
+  flex: 1 1 0;
+  min-block-size: 2rem;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.tab[aria-pressed='true'] {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.action:focus-visible,
+.tab:focus-visible,
+.close:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each step leads with the glyph of the button it names, framed as that button is: the reader
+   matches the picture on screen rather than reading their way to it. */
+.step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.stepIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+/* Phones: the dialog is the bottom sheet the rest of the app uses, full width and rising from
+   the edge it is anchored to, clear of the home indicator. */
+@media (max-width: 47.99rem) {
+  .dialog {
+    inline-size: 100%;
+    max-inline-size: none;
+    margin-block: auto 0;
+    border-inline: 0;
+    border-block-end: 0;
+    border-radius: 0.875rem 0.875rem 0 0;
+    translate: 0 100%;
+  }
+
+  .dialog[open] {
+    translate: none;
+  }
+
+  @starting-style {
+    .dialog[open] {
+      translate: 0 100%;
+    }
+  }
+
+  .card {
+    padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Phones: the arrow stands on its own, as the GitHub mark does, and the two marks stand together
+   with no dot between them — the footer has one line to spend and they read as a pair. */
+@media (max-width: 47.99rem) {
+  .triggerLabel {
+    display: none;
+  }
+
+  .trigger::before {
+    content: none;
+  }
+
+  /* See `.source` in SiteFooter.module.css: the two marks' hit areas meet, and neither takes a
+     tap meant for the other. */
+  .trigger {
+    margin-inline-start: 0;
+  }
+}
+
+@media (pointer: coarse) {
+  .tab {
+    min-block-size: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog::backdrop {
+    transition: none;
+  }
+}

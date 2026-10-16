@@ -247,4 +247,6 @@ export const sl = {
   '… containing their source': '… vsebujejo izvorno vrstico',
   'Min / max': 'Najmanj / največ',
   'Cross-references · {name}': 'Svetopisemske povezave · {name}',
+  'Check your connection and try again.': 'Preverite povezavo in poskusite znova.',
+  '{name} could not be loaded.': 'Prevoda {name} ni bilo mogoče naložiti.',
 } satisfies Record<keyof typeof en, string>;

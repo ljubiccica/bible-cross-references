@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Versification } from '../core/bible/versification.ts';
+import type { TranslationId } from '../core/datasets/ids.ts';
 import {
   explorerUrl,
   parseExplorerUrl,
+  plainTranslationFor,
   type ExplorerLocation,
   type ViewRoute,
 } from './explorer-location.ts';
@@ -20,6 +22,7 @@ export interface NavigateOptions {
 export function useExplorerLocation<Id extends string>(
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
+  defaultTranslation: TranslationId,
 ): readonly [
   ExplorerLocation<Id>,
   (next: ExplorerLocation<Id>, options?: NavigateOptions) => void,
@@ -31,8 +34,9 @@ export function useExplorerLocation<Id extends string>(
         import.meta.env.BASE_URL,
         routes,
         versification,
+        defaultTranslation,
       ),
-    [routes, versification],
+    [routes, versification, defaultTranslation],
   );
   const [location, setLocation] = useState(read);
 
@@ -50,7 +54,13 @@ export function useExplorerLocation<Id extends string>(
     (next: ExplorerLocation<Id>, { replace = false }: NavigateOptions = {}) => {
       setLocation(next);
       const route = routes.find((candidate) => candidate.id === next.view) ?? routes[0];
-      const url = explorerUrl(route, next, import.meta.env.BASE_URL, versification);
+      const url = explorerUrl(
+        route,
+        next,
+        import.meta.env.BASE_URL,
+        versification,
+        plainTranslationFor(defaultTranslation),
+      );
       if (url !== `${window.location.pathname}${window.location.search}`) {
         if (replace) {
           window.history.replaceState(null, '', url);
@@ -59,7 +69,7 @@ export function useExplorerLocation<Id extends string>(
         }
       }
     },
-    [routes, versification],
+    [routes, versification, defaultTranslation],
   );
 
   return [location, navigate];

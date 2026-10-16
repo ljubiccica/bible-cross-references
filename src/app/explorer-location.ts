@@ -1,13 +1,14 @@
-import { selectedTranslation } from '../translations/selection.ts';
-import { DEFAULT_TRANSLATION_ID } from '../translations/registry.ts';
 import { GENRES } from '../core/bible/genres.ts';
 import { parsePassageOsisId, toPassageOsisId, type Passage } from '../core/bible/passage.ts';
 import type { Versification } from '../core/bible/versification.ts';
+import type { TranslationId } from '../core/datasets/ids.ts';
+import { DEFAULT_TRANSLATION_ID } from '../translations/registry.ts';
 import {
   DEFAULT_LINK_FILTER,
   VOTE_THRESHOLDS,
   type LinkFilter,
 } from '../visualizations/shared/link-filter.ts';
+import { translationFromParams, TRANSLATION_PARAM } from './translation-choice.ts';
 
 /** URL query parameter holding the focused passage as an OSIS ID (`?ref=John.3.16`, `?ref=Isa.53`). */
 const PASSAGE_PARAM = 'ref';
@@ -23,11 +24,12 @@ export interface ViewRoute<Id extends string> {
   readonly path: string;
 }
 
-/** What the URL says: the active view, the focused passage and the link filter. */
+/** What the URL says: the active view, the focused passage, the link filter and the text. */
 export interface ExplorerLocation<Id extends string> {
   readonly view: Id;
   readonly passage: Passage | null;
   readonly filter: LinkFilter;
+  readonly translation: TranslationId;
 }
 
 /** Unknown thresholds and genres fall back to the defaults. */
@@ -51,14 +53,17 @@ function normalizePath(path: string): string {
 }
 
 /**
- * Reads the view, the passage and the filter from a URL. Unknown paths show the home view (the
- * first route), an unknown passage shows none, and unknown filter values keep the defaults.
+ * Reads the view, the passage, the filter and the translation from a URL. Unknown paths show the
+ * home view (the first route), an unknown passage shows none, and unknown filter values keep the
+ * defaults. A URL naming no translation (or one the app does not have) shows `defaultTranslation`,
+ * which is the reader's own choice from an earlier visit.
  */
 export function parseExplorerUrl<Id extends string>(
   url: URL,
   base: string,
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
+  defaultTranslation: TranslationId,
 ): ExplorerLocation<Id> {
   const path = url.pathname.startsWith(base) ? normalizePath(url.pathname.slice(base.length)) : '';
   const route = routes.find((candidate) => candidate.path === path) ?? routes[0];
@@ -67,7 +72,17 @@ export function parseExplorerUrl<Id extends string>(
     view: route.id,
     passage: id === null ? null : (parsePassageOsisId(id, versification) ?? null),
     filter: parseFilter(url.searchParams),
+    translation: translationFromParams(url.searchParams) ?? defaultTranslation,
   };
+}
+
+/**
+ * The translation a URL need not name for this reader: the one they land on without a `?t=`. For
+ * a reader on the default translation that is the default, and their links stay plain; for anyone
+ * else nothing may be left out, or the URL would reopen on a different text than it shows.
+ */
+export function plainTranslationFor(preferred: TranslationId): TranslationId | null {
+  return preferred === DEFAULT_TRANSLATION_ID ? DEFAULT_TRANSLATION_ID : null;
 }
 
 /**
@@ -76,15 +91,26 @@ export function parseExplorerUrl<Id extends string>(
  */
 export function explorerUrl(
   route: ViewRoute<string>,
-  { passage, filter }: Pick<ExplorerLocation<string>, 'passage' | 'filter'>,
+  {
+    passage,
+    filter,
+    translation,
+  }: Pick<ExplorerLocation<string>, 'passage' | 'filter' | 'translation'>,
   base: string,
   versification: Versification,
+  /**
+   * The translation the URL need not name, because a reader opening it would land on that one
+   * anyway: their own standing choice. `null` names the translation whatever it is, which is what
+   * a link meant for someone else needs — their choice must not quietly replace its text.
+   */
+  omitTranslation: TranslationId | null = DEFAULT_TRANSLATION_ID,
 ): string {
   const params = new URLSearchParams();
-  const translation = selectedTranslation();
-  if (translation.id !== DEFAULT_TRANSLATION_ID) params.set('translation', translation.id);
   if (passage !== null) {
     params.set(PASSAGE_PARAM, toPassageOsisId(passage, versification));
+  }
+  if (translation !== omitTranslation) {
+    params.set(TRANSLATION_PARAM, translation);
   }
   if (filter.minVotes !== DEFAULT_LINK_FILTER.minVotes) {
     params.set(VOTES_PARAM, filter.minVotes === -Infinity ? 'all' : String(filter.minVotes));

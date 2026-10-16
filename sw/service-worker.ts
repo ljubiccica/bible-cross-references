@@ -15,10 +15,14 @@
 declare const self: ServiceWorkerGlobalScope;
 
 // Injected by the build (`offline()` in vite/offline.ts): paths relative to the worker's scope.
-/** This version's pages and files. */
-declare const PRECACHE: readonly string[];
-/** The datasets, cached across versions. */
+/** The app's pages. Without them there is no app offline, so they have to be stored. */
+declare const PAGES: readonly string[];
+/** This version's code, styles and icons. */
+declare const FILES: readonly string[];
+/** The datasets a first visit needs, cached across versions. */
 declare const DATASETS: readonly string[];
+/** Where all datasets live, so the ones loaded later (another translation) are cached too. */
+declare const DATA_DIRECTORY: string;
 /** A hash of this version's files; a new version gets new caches. */
 declare const VERSION: string;
 
@@ -33,22 +37,62 @@ const scope = new URL(self.registration.scope);
 const LOOKUP: CacheQueryOptions = { ignoreVary: true };
 const toUrl = (path: string) => new URL(path, scope).href;
 const datasetUrls = new Set(DATASETS.map(toUrl));
+const dataPath = new URL(`${DATA_DIRECTORY}/`, scope).pathname;
+
+/** Stores what it can, and says what it could not: one missing file is not worth an app that
+ * never works offline. */
+async function store(cache: Cache, urls: readonly string[]): Promise<void> {
+  const results = await Promise.allSettled(
+    urls.map(async (url) => {
+      if (!(await cache.match(url, LOOKUP))) {
+        await cache.add(url);
+      }
+    }),
+  );
+  const failed = results.filter((result) => result.status === 'rejected').length;
+  if (failed > 0) {
+    console.warn(`Offline cache: ${String(failed)} of ${String(urls.length)} files were skipped.`);
+  }
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const shell = await caches.open(SHELL_CACHE);
-      await shell.addAll(PRECACHE.map(toUrl));
+      // The pages first and on their own: everything else can be fetched again, they cannot.
+      await shell.addAll(PAGES.map(toUrl));
+      await store(shell, FILES.map(toUrl));
       // The page has just downloaded the datasets, so these usually come from the HTTP cache.
-      const data = await caches.open(DATA_CACHE);
-      await Promise.all(
-        [...datasetUrls].map(async (url) => {
-          if (!(await data.match(url, LOOKUP))) {
-            await data.add(url);
-          }
-        }),
-      );
+      await store(await caches.open(DATA_CACHE), [...datasetUrls]);
       await self.skipWaiting();
+    })(),
+  );
+});
+
+/**
+ * The page tells the worker which datasets it is actually using, which is how a translation other
+ * than the default one gets stored: on the visit it was chosen, the page had already fetched it
+ * before this worker existed, so nothing else would ever put it here.
+ */
+self.addEventListener('message', (event) => {
+  const message: unknown = event.data;
+  if (
+    typeof message !== 'object' ||
+    message === null ||
+    !('type' in message) ||
+    message.type !== 'cache-datasets' ||
+    !('paths' in message) ||
+    !Array.isArray(message.paths)
+  ) {
+    return;
+  }
+  const urls = message.paths
+    .filter((path): path is string => typeof path === 'string')
+    .map(toUrl)
+    .filter((url) => url.startsWith(new URL(`${DATA_DIRECTORY}/`, scope).href));
+  event.waitUntil(
+    (async () => {
+      await store(await caches.open(DATA_CACHE), urls);
     })(),
   );
 });
@@ -77,7 +121,7 @@ self.addEventListener('fetch', (event) => {
   }
   if (request.mode === 'navigate') {
     event.respondWith(page(request));
-  } else if (datasetUrls.has(url.href)) {
+  } else if (url.pathname.startsWith(dataPath)) {
     event.respondWith(dataset(event, request));
   } else {
     event.respondWith(file(request));
@@ -113,8 +157,20 @@ async function dataset(event: FetchEvent, request: Request): Promise<Response> {
   return refresh;
 }
 
-/** The app's files: named by their content, so the cached copy is always right. */
+/**
+ * The app's files: named by their content, so the cached copy is always right. One that is
+ * missing — a download that failed while this version was installing — is stored as it is
+ * fetched, instead of being absent offline until the next release.
+ */
 async function file(request: Request): Promise<Response> {
   const shell = await caches.open(SHELL_CACHE);
-  return (await shell.match(request, LOOKUP)) ?? fetch(request);
+  const cached = await shell.match(request, LOOKUP);
+  if (cached) {
+    return cached;
+  }
+  const response = await fetch(request);
+  if (response.ok) {
+    await shell.put(request, response.clone());
+  }
+  return response;
 }

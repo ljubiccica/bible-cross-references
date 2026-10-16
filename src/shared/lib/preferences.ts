@@ -54,6 +54,30 @@ function write(key: string, value: string): void {
   notify();
 }
 
+/** Reads a stored preference outside React, e.g. before the app renders. */
+export function readPreference(key: string): string | null {
+  return read(key);
+}
+
+/** A stored preference, `fallback` until the reader changes it. */
+export function useStringPreference(
+  key: string,
+  fallback: string,
+): readonly [string, (value: string) => void] {
+  const stored = useSyncExternalStore(
+    subscribe,
+    () => read(key),
+    () => null,
+  );
+  const set = useCallback(
+    (value: string) => {
+      write(key, value);
+    },
+    [key],
+  );
+  return [stored ?? fallback, set];
+}
+
 /** A yes/no preference, `fallback` until the reader changes it. */
 export function useBooleanPreference(
   key: string,

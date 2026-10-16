@@ -42,7 +42,7 @@ describe('Slovenian book labels', () => {
     if (result.ok) expect(result.reference.book).toBe(book);
   });
   it('localizes displayed references while keeping OSIS URLs unchanged', () => {
-    vi.stubGlobal('location', { search: '?translation=chr1914-sl' });
+    vi.stubGlobal('location', { search: '?t=chr1914-sl' });
     expect(formatVerseRef({ book: 'Gen', chapter: 1, verse: 1 })).toBe('1. Mojzesova 1:1');
     const passage = { kind: 'chapter', book: 'John', chapter: 3 } as const;
     expect(formatPassage(passage, CANONICAL_VERSIFICATION)).toBe('Janez 3');

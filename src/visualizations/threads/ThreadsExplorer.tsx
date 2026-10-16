@@ -24,9 +24,9 @@ const DEFAULT_CHAPTER = { book: 'John', chapter: 1 } as const satisfies {
 };
 
 const DIRECTIONS = [
-  { value: 'outgoing', label: t('Points to'), icon: OutgoingIcon },
-  { value: 'incoming', label: t('Pointed from'), icon: IncomingIcon },
-  { value: 'both', label: t('Both'), icon: BothDirectionsIcon },
+  { value: 'outgoing', label: 'Points to', icon: OutgoingIcon },
+  { value: 'incoming', label: 'Pointed from', icon: IncomingIcon },
+  { value: 'both', label: 'Both', icon: BothDirectionsIcon },
 ] as const;
 
 function chapterOf(passage: Passage | null, data: VizData): { book: BookId; chapter: number } {
@@ -49,6 +49,7 @@ export function ThreadsExplorer({
   filter,
   onFilterChange,
   masthead,
+  translationMenu,
   passageLinks,
   shareUrl,
 }: VisualizationProps) {
@@ -74,17 +75,18 @@ export function ThreadsExplorer({
   return (
     <VizPage
       masthead={masthead}
-      credits={<Credits />}
+      credits={<Credits translation={data.translation.manifest} />}
       onPanelClose={closePanel}
       controls={
         <>
           <ReferenceSearch versification={data.versification} onSelect={onNavigate} />
+          {translationMenu}
           <SegmentedControl
             label={t('Thread direction')}
             options={DIRECTIONS}
             value={direction}
             onChange={setDirection}
-            iconsOnlyOnPhones
+            iconsOnlyWhenNarrow
           />
           <GenreMenu
             hiddenGenres={filter.hiddenGenres}

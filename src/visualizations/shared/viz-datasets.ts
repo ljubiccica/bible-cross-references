@@ -1,28 +1,29 @@
 import { crossReferencesDatasetPath, translationDatasetPath } from '../../core/datasets/paths.ts';
 import { CROSS_REFERENCE_SOURCE_MANIFESTS } from '../../cross-references/registry.ts';
 import type { CrossReferenceSourceManifest } from '../../cross-references/source-manifest.ts';
-import { selectedTranslation } from '../../translations/selection.ts';
-import type { TranslationManifest } from '../../translations/translation-manifest.ts';
+import { DEFAULT_TRANSLATION_ID } from '../../translations/registry.ts';
 
-/** The datasets the visualizations load: the default translation and cross-reference source. */
-export function vizDatasets(): {
-  readonly translation: TranslationManifest;
-  readonly crossReferences: CrossReferenceSourceManifest;
-} {
-  const crossReferences = CROSS_REFERENCE_SOURCE_MANIFESTS.find(
-    (manifest) => manifest.enabledByDefault,
+/** The cross-reference source the visualizations draw. */
+export function vizCrossReferenceSource(): CrossReferenceSourceManifest {
+  const manifest = CROSS_REFERENCE_SOURCE_MANIFESTS.find(
+    ({ enabledByDefault }) => enabledByDefault,
   );
-  if (!crossReferences) {
+  if (!manifest) {
     throw new Error('No cross-reference source is enabled by default.');
   }
-  return { translation: selectedTranslation(), crossReferences };
+  return manifest;
 }
 
 /**
- * Their files, relative to the site's base. The HTML preloads them (see vite/site-head.ts), so they
- * download while the scripts do, instead of after.
+ * The files a first visit needs, relative to the site's base: the links, and the text of the
+ * default translation. The HTML preloads them (see vite/site-head.ts), so they download while the
+ * scripts do, instead of after. A reader who has chosen another translation downloads that one
+ * when the app starts (see `translationLoader`); only the default can be preloaded, because the
+ * HTML is the same for everyone.
  */
 export function vizDatasetPaths(): readonly string[] {
-  const { translation, crossReferences } = vizDatasets();
-  return [translationDatasetPath(translation.id), crossReferencesDatasetPath(crossReferences.id)];
+  return [
+    translationDatasetPath(DEFAULT_TRANSLATION_ID),
+    crossReferencesDatasetPath(vizCrossReferenceSource().id),
+  ];
 }

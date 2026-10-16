@@ -22,22 +22,61 @@
   white-space: nowrap;
 }
 
+/* The source link. The underline the footer's other links carry sits on its word alone: drawn
+   through the mark, it reads as a smudge. The padding gives a finger more than the mark itself to
+   hit; on an inline box it leaves the line's height alone, and the negative margins hand the
+   width back, so the line is no wider for it. */
+.source {
+  margin-inline: calc(var(--space-1) * -1);
+  padding: var(--space-1);
+  text-decoration: none;
+}
+
+.sourceLabel {
+  margin-inline-start: 0.3em;
+  text-decoration: underline;
+}
+
 .credits {
   flex: 1 1 20rem;
   text-align: end;
 }
 
 /* Phones: one line, owner on the left and the (shortened) credits on the right, when it fits;
-   otherwise the credits wrap below rather than lose anything. */
+   otherwise the credits wrap below rather than lose anything. Each row is spaced on its own, so
+   the credits sit at the far end while they share the owner's row, and start at the same edge as
+   the owner once they have a row to themselves. */
 @media (max-width: 47.99rem) {
   .footer {
-    column-gap: var(--space-2);
+    justify-content: space-between;
+    /* The two halves nearly fill a 360px phone between them, and the credit cannot be shortened
+       (it is the licence), so they are set as close as two separate sentences can be. */
+    column-gap: var(--space-1);
     padding-inline: var(--space-3);
     font-size: 0.6875rem;
   }
 
   .credits {
     flex: 0 1 auto;
-    margin-inline-start: auto;
+  }
+
+  /* The mark says GitHub on its own. */
+  .sourceLabel {
+    display: none;
+  }
+
+  /* The install arrow stands right after it: the mark keeps the width of its own padding on
+     that side, so the two hit areas meet rather than overlap. */
+  .source {
+    margin-inline-end: 0;
+  }
+}
+
+/* The narrowest phones still in use: the credit is the one part of the line that cannot be
+   shortened (it is the licence), so the last few pixels come off the page's edges instead. */
+@media (max-width: 22.49rem) {
+  .footer {
+    column-gap: var(--space-1);
+    padding-inline: var(--space-2);
   }
 }

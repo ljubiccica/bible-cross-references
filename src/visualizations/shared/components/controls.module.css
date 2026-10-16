@@ -25,9 +25,11 @@
   }
 }
 
+/* Phones: the box starts small so that the busiest header still fits its controls on one row,
+   and then grows into whatever room is left, which is most of the row. */
 @media (max-width: 47.99rem) {
   .search {
-    flex-basis: 6rem;
+    flex-basis: 4.5rem;
     max-inline-size: none;
   }
 }
@@ -104,8 +106,56 @@
   color: var(--color-text);
 }
 
+/* Up to 64rem the busiest header would need a second row for the controls that spell out their
+   options, so there they stand on their icons (with the name as a tooltip and to screen readers). */
+@media (max-width: 63.99rem) {
+  .segmented[data-icons-only-when-narrow='true'] .optionLabel {
+    display: none;
+  }
+}
+
 .menu {
   position: relative;
+}
+
+/* A menu that shows its value (e.g. the translation) keeps it at every width: the value is the
+   point of the control, and three letters cost less room than any icon. The chevron marks it as a
+   menu, since it has no icon of its own. */
+.menuValue {
+  white-space: nowrap;
+}
+
+/* While the choice is being fetched, the button steps back: the value it shows is the one on its
+   way, and the page still has the previous one. */
+.menuButton[aria-busy='true'] {
+  color: var(--color-text-muted);
+}
+
+.menuChevron {
+  margin-inline-start: calc(var(--space-1) * -1);
+  color: var(--color-text-muted);
+  font-size: 0.8em;
+}
+
+/* One choice in a menu's list: the radio, the full name, and the abbreviation at the far end. */
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.choice input {
+  flex: none;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.choiceAbbreviation {
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
 }
 
 .indicator {
@@ -140,6 +190,17 @@
   font-size: 0.875rem;
 }
 
+/* A message inside a menu, in the flow of the popover (unlike `.error`, which floats under the
+   search box). */
+.menuError {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-danger-soft);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+}
+
 .hint {
   margin: 0;
   color: var(--color-text-muted);
@@ -154,9 +215,17 @@
    buttons show only their icon, with the "changed" dot as a badge in its corner. */
 @media (max-width: 47.99rem) {
   .longLabel,
-  .menuLabel,
-  .segmented[data-icons-only-on-phones='true'] .optionLabel {
+  .menuLabel {
     display: none;
+  }
+
+  /* The value a menu wears is already short; the chevron is what gives way on a phone. */
+  .menuChevron {
+    display: none;
+  }
+
+  .menuButton {
+    padding-inline: var(--space-2);
   }
 
   .shortLabel {

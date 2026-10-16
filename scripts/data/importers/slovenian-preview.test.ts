@@ -84,7 +84,7 @@ describe('Slovenian local preview', () => {
   });
   it('keeps English as the default and handles unknown selections', () => {
     expect(selectedTranslation('').id).toBe('bsb');
-    expect(selectedTranslation('?translation=unknown').id).toBe('bsb');
-    expect(selectedTranslation('?translation=chr1914-sl').language).toBe('sl');
+    expect(selectedTranslation('?t=unknown').id).toBe('bsb');
+    expect(selectedTranslation('?t=chr1914-sl').language).toBe('sl');
   });
 });

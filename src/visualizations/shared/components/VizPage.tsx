@@ -1,8 +1,6 @@
 import { formatInteger } from '../../../shared/lib/format.ts';
 import { t, uiLanguage } from '../../../locales/ui.ts';
 import { useEffect, type ReactNode } from 'react';
-import { TRANSLATION_IDS } from '../../../core/datasets/ids.ts';
-import { getTranslationManifest } from '../../../translations/registry.ts';
 import { selectedTranslation } from '../../../translations/selection.ts';
 import { SiteFooter } from '../../../shared/ui/SiteFooter.tsx';
 import { useBottomSheet } from '../use-bottom-sheet.ts';
@@ -36,7 +34,7 @@ export function VizPage({
   const translation = selectedTranslation();
   useEffect(() => {
     document.documentElement.lang = uiLanguage();
-  }, []);
+  }, [translation.language]);
   const hasPanel = panel !== undefined && panel !== null && panel !== false;
   const { expanded, setExpanded, containerRef, sheetRef, spaceRef, scrimRef } = useBottomSheet(
     hasPanel,
@@ -46,27 +44,7 @@ export function VizPage({
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.masthead}>{masthead}</div>
-        <div className={styles.controls}>
-          {controls}
-          <label>
-            {t('Bible')}{' '}
-            <select
-              aria-label={t('Bible translation')}
-              value={translation.id}
-              onChange={(event) => {
-                const url = new URL(window.location.href);
-                url.searchParams.set('translation', event.target.value);
-                window.location.assign(url);
-              }}
-            >
-              {TRANSLATION_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {getTranslationManifest(id).name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <div className={styles.controls}>{controls}</div>
         {translation.previewNotice && (
           <p role="status" style={{ margin: '0.5rem 1rem', fontSize: '0.85rem' }}>
             {t(

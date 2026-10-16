@@ -6,16 +6,21 @@ import { connectionCount, t, uiLanguage, verseCount } from './ui.ts';
 afterEach(() => vi.unstubAllGlobals());
 
 it('uses the Bible selection for the interface and falls back to English', () => {
-  vi.stubGlobal('location', { search: '?translation=chr1914-sl' });
+  vi.stubGlobal('location', { search: '?t=chr1914-sl' });
   expect(uiLanguage()).toBe('sl');
   expect(t('Bible')).toBe('Sveto pismo');
   expect(connectionCount(2)).toBe('2 povezavi');
   expect(verseCount(3)).toBe('3 vrstice');
-  vi.stubGlobal('location', { search: '?translation=bsb' });
+  vi.stubGlobal('location', { search: '?t=bsb' });
   expect(uiLanguage()).toBe('en');
   expect(t('Bible')).toBe('Bible');
   expect(connectionCount(1)).toBe('1 connection');
-  vi.stubGlobal('location', { search: '?translation=unknown' });
+  vi.stubGlobal('location', { search: '?t=chr1914-sl' });
+  expect(uiLanguage()).toBe('sl');
+  expect(t('Bible')).toBe('Sveto pismo');
+  vi.stubGlobal('location', { search: '?t=kjv' });
+  expect(uiLanguage()).toBe('en');
+  vi.stubGlobal('location', { search: '?t=unknown' });
   expect(uiLanguage()).toBe('en');
 });
 

@@ -11,6 +11,16 @@
       "homepage": "https://berean.bible/"
     },
     {
+      "id": "kjv",
+      "description": "King James Version, eBible.org edition, verse-per-line text in a ZIP archive",
+      "url": "https://ebible.org/Scriptures/eng-kjv2006_vpl.zip",
+      "fileName": "eng-kjv2006_vpl.zip",
+      "sha256": "2642484f42075a6460fb16e537f3a89c256e1a0dbb04e43e3083ac12a6ecc247",
+      "retrievedAt": "2026-10-15",
+      "license": "Public domain (United Kingdom: Crown copyright)",
+      "homepage": "https://ebible.org/Scriptures/details.php?id=eng-kjv2006"
+    },
+    {
       "id": "openbible",
       "description": "OpenBible.info cross-references (TSV in a ZIP archive)",
       "url": "https://a.openbible.info/data/cross-references.zip",

@@ -246,4 +246,6 @@ export const en = {
   '… containing their source': '… containing their source',
   'Min / max': 'Min / max',
   'Cross-references · {name}': 'Cross-references · {name}',
+  'Check your connection and try again.': 'Check your connection and try again.',
+  '{name} could not be loaded.': '{name} could not be loaded.',
 } as const;

@@ -6,6 +6,7 @@ import {
   translationDatasetPath,
 } from '../../src/core/datasets/paths.ts';
 import { importBsbText } from './importers/bsb.ts';
+import { importEbibleVerseLines } from './importers/ebible-vpl.ts';
 import { importOpenBibleCrossReferences } from './importers/openbible.ts';
 import { extractZipTextEntry } from './lib/files.ts';
 import type { RawSource } from './lib/sources.ts';
@@ -47,6 +48,17 @@ const TRANSLATION_BUILDERS: Readonly<Record<TranslationId, DatasetBuilder>> = {
     build: async (readSource) => {
       const { source, content } = await readSource('bsb');
       return importBsbText(content.toString('utf8'), {
+        ...provenanceOf(source),
+        snapshotDate: null,
+      });
+    },
+  },
+  kjv: {
+    outputPath: translationDatasetPath('kjv'),
+    build: async (readSource) => {
+      const { source, content } = await readSource('kjv');
+      const text = extractZipTextEntry(content, 'eng-kjv2006_vpl.txt');
+      return importEbibleVerseLines(text, 'kjv', {
         ...provenanceOf(source),
         snapshotDate: null,
       });

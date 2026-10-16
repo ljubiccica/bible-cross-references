@@ -1,0 +1,193 @@
+import { BOOKS, type BookId } from '../../../src/core/bible/books.ts';
+import { toOsisId, type VerseIndex } from '../../../src/core/bible/verse-ref.ts';
+import { CANONICAL_VERSIFICATION } from '../../../src/core/bible/versification.ts';
+import {
+  DATASET_SCHEMA_VERSION,
+  type DatasetProvenance,
+  type TranslationTextFile,
+} from '../../../src/core/datasets/formats.ts';
+import type { TranslationId } from '../../../src/core/datasets/ids.ts';
+import { stripByteOrderMark } from '../lib/files.ts';
+import { createNotice } from '../lib/notices.ts';
+
+/**
+ * Importer for eBible.org's verse-per-line editions (`<id>_vpl.zip` → `<id>_vpl.txt`), which every
+ * translation there is published in: one line per verse, `<BOOK> <chapter>:<verse> <text>`, text
+ * only (eBible strips notes, headings and paragraph formatting from these files).
+ *
+ * Books are named with the three-letter codes BibleWorks uses, listed below in canonical order.
+ */
+
+/** eBible's book codes, in the same order as `BOOKS`. */
+export const BOOK_CODES = [
+  'GEN',
+  'EXO',
+  'LEV',
+  'NUM',
+  'DEU',
+  'JOS',
+  'JDG',
+  'RUT',
+  '1SA',
+  '2SA',
+  '1KI',
+  '2KI',
+  '1CH',
+  '2CH',
+  'EZR',
+  'NEH',
+  'EST',
+  'JOB',
+  'PSA',
+  'PRO',
+  'ECC',
+  'SOL',
+  'ISA',
+  'JER',
+  'LAM',
+  'EZE',
+  'DAN',
+  'HOS',
+  'JOE',
+  'AMO',
+  'OBA',
+  'JON',
+  'MIC',
+  'NAH',
+  'HAB',
+  'ZEP',
+  'HAG',
+  'ZEC',
+  'MAL',
+  'MAT',
+  'MAR',
+  'LUK',
+  'JOH',
+  'ACT',
+  'ROM',
+  '1CO',
+  '2CO',
+  'GAL',
+  'EPH',
+  'PHI',
+  'COL',
+  '1TH',
+  '2TH',
+  '1TI',
+  '2TI',
+  'TIT',
+  'PHM',
+  'HEB',
+  'JAM',
+  '1PE',
+  '2PE',
+  '1JO',
+  '2JO',
+  '3JO',
+  'JUD',
+  'REV',
+] as const;
+
+if (BOOK_CODES.length !== BOOKS.length) {
+  throw new Error(`eBible: ${BOOK_CODES.length} book codes for ${BOOKS.length} books.`);
+}
+
+const BOOK_IDS_BY_CODE: ReadonlyMap<string, BookId> = new Map(
+  BOOKS.map((book, index) => [BOOK_CODES[index] ?? '', book.id]),
+);
+
+const VERSE_LINE_PATTERN = /^(\S+) (\d+):(\d+) ?(.*)$/;
+
+/**
+ * Typographic marks these editions carry, which the app has no place for: pilcrows start a
+ * paragraph, and square brackets mark words the translators supplied (the KJV's italics). The
+ * wording is left exactly as it is; only the marks go.
+ */
+function cleanVerseText(text: string): string {
+  return text
+    .replace(/¶\s*/g, '')
+    .replaceAll('[', '')
+    .replaceAll(']', '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function importEbibleVerseLines(
+  text: string,
+  translationId: TranslationId,
+  provenance: DatasetProvenance,
+): TranslationTextFile {
+  const versification = CANONICAL_VERSIFICATION;
+  const verses = new Array<string | undefined>(versification.verseCount).fill(undefined);
+
+  stripByteOrderMark(text)
+    .split(/\r?\n/)
+    .forEach((line, offset) => {
+      if (line.trim() === '') {
+        return;
+      }
+      const lineNumber = offset + 1;
+      const match = VERSE_LINE_PATTERN.exec(line);
+      if (!match) {
+        throw new Error(
+          `${translationId} line ${lineNumber}: unrecognized format: "${line.slice(0, 80)}".`,
+        );
+      }
+      const [, code = '', chapter = '', verse = '', verseText = ''] = match;
+      const book = BOOK_IDS_BY_CODE.get(code);
+      if (book === undefined) {
+        throw new Error(`${translationId} line ${lineNumber}: unknown book code "${code}".`);
+      }
+      const ref = { book, chapter: Number(chapter), verse: Number(verse) };
+      const index = versification.indexOf(ref);
+      if (index === undefined) {
+        // Translations that number verses differently (e.g. the World English Bible moves the
+        // doxology of Romans) need a mapping before they can be added.
+        throw new Error(
+          `${translationId} line ${lineNumber}: ${toOsisId(ref)} is not in the KJV versification.`,
+        );
+      }
+      if (verses[index] !== undefined) {
+        throw new Error(`${translationId} line ${lineNumber}: duplicate verse ${toOsisId(ref)}.`);
+      }
+      verses[index] = cleanVerseText(verseText);
+    });
+
+  const missing: VerseIndex[] = [];
+  const complete = verses.map((verseText, index) => {
+    if (verseText === undefined) {
+      missing.push(index);
+    }
+    return verseText ?? '';
+  });
+  const osisIdAt = (index: VerseIndex) => toOsisId(versification.refAt(index));
+  if (missing.length > 0) {
+    throw new Error(
+      `${translationId}: ${missing.length} verses are missing, ` +
+        `e.g. ${missing.slice(0, 5).map(osisIdAt).join(', ')}.`,
+    );
+  }
+
+  const omitted = complete.flatMap((verseText, index) =>
+    verseText === '' ? [osisIdAt(index)] : [],
+  );
+  return {
+    format: 'translation-text',
+    schemaVersion: DATASET_SCHEMA_VERSION,
+    versification: versification.id,
+    provenance,
+    notices:
+      omitted.length > 0
+        ? [
+            createNotice(
+              'info',
+              'Verses without text: the translation omits them (they are absent from the ' +
+                'earliest manuscripts) and gives them in footnotes instead.',
+              omitted,
+            ),
+          ]
+        : [],
+    translationId,
+    verses: complete,
+  };
+}

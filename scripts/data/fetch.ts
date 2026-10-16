@@ -6,6 +6,7 @@
  *   npm run data:fetch -- --update   accept new upstream versions and re-pin their checksums
  */
 import { parseArgs } from 'node:util';
+import { download } from './lib/download.ts';
 import { formatBytes, readFileIfExists, sha256Hex, today, writeFileAtomic } from './lib/files.ts';
 import { rawFilePath } from './lib/paths.ts';
 import { readSources, writeSources, type RawSource } from './lib/sources.ts';
@@ -13,14 +14,6 @@ import { readSources, writeSources, type RawSource } from './lib/sources.ts';
 const { values: options } = parseArgs({
   options: { update: { type: 'boolean', default: false } },
 });
-
-async function download(url: string): Promise<Buffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`GET ${url} failed: HTTP ${response.status}`);
-  }
-  return Buffer.from(await response.arrayBuffer());
-}
 
 /** Makes sure the source's raw file is present and matches its pin; returns the updated pin. */
 async function fetchSource(source: RawSource): Promise<RawSource> {

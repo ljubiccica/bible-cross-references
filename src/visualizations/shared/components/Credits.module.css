@@ -1,5 +1,19 @@
+/* Phones keep the attribution the licence asks for, and nothing else: the creator and the
+   licence of the cross-references. The rest, the text's own credit included, is background — and
+   the room it frees is what keeps the footer on one line on a 320px phone. */
 @media (max-width: 47.99rem) {
-  .detail {
+  .detail,
+  .text {
+    display: none;
+  }
+}
+
+/* The background only appears where the footer still fits on one line with it. The whole line
+   measures about 80rem here; it waits for 92rem, because a font is not the same width everywhere
+   (the system stack is wider on a Mac than on the Linux box this was measured on) and the line
+   breaking is the one thing that must not happen. */
+@media (max-width: 91.99rem) {
+  .wide {
     display: none;
   }
 }

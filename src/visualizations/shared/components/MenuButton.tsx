@@ -1,14 +1,22 @@
 import { t } from '../../../locales/ui.ts';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import type { IconComponent } from '../../../shared/ui/icons.tsx';
+import { ExpandIcon, type IconComponent } from '../../../shared/ui/icons.tsx';
 import styles from './controls.module.css';
 
 interface MenuButtonProps {
+  /** What the menu is called, e.g. "Filters". Always its accessible name. */
   readonly label: string;
-  /** Shown next to the label, and alone on phones. */
-  readonly icon: IconComponent;
+  /** Shown next to the label, and alone on phones. Omit for a menu that shows its value. */
+  readonly icon?: IconComponent;
+  /**
+   * The setting's current value, e.g. "KJV". A menu with one shows it in place of its name, at
+   * every width: the value is what the reader needs to see, and it is shorter than the name.
+   */
+  readonly value?: string;
   /** Shows a small dot on the button, e.g. when the menu's settings differ from the defaults. */
   readonly indicator?: boolean;
+  /** Marks the button busy while the choice is being applied (e.g. a text still downloading). */
+  readonly busy?: boolean;
   /** The popover's content. */
   readonly children: ReactNode;
 }
@@ -30,8 +38,16 @@ function keepInViewport(popover: HTMLElement): void {
 }
 
 /** A header button that opens a small popover; closes on outside click or Escape. */
-export function MenuButton({ label, icon: Icon, indicator = false, children }: MenuButtonProps) {
+export function MenuButton({
+  label,
+  icon: Icon,
+  value,
+  indicator = false,
+  busy = false,
+  children,
+}: MenuButtonProps) {
   const [open, setOpen] = useState(false);
+  const name = value === undefined ? label : `${label}: ${value}`;
   const menuRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
@@ -79,16 +95,23 @@ export function MenuButton({ label, icon: Icon, indicator = false, children }: M
       <button
         type="button"
         className={`${styles.button} ${styles.menuButton}`}
-        // Named explicitly: on phones the label is hidden and only the icon shows.
-        aria-label={indicator ? t('{label} (changed)', { label }) : label}
+        aria-label={indicator ? t('{label} (changed)', { label: name }) : name}
         aria-expanded={open}
         aria-controls={popoverId}
+        aria-busy={busy || undefined}
         onClick={() => {
-          setOpen((value) => !value);
+          setOpen((isOpen) => !isOpen);
         }}
       >
-        <Icon />
-        <span className={styles.menuLabel}>{label}</span>
+        {Icon && <Icon />}
+        {value === undefined ? (
+          <span className={styles.menuLabel}>{label}</span>
+        ) : (
+          <>
+            <span className={styles.menuValue}>{value}</span>
+            <ExpandIcon className={styles.menuChevron} />
+          </>
+        )}
         {indicator && <span className={styles.indicator} />}
       </button>
       {open && (

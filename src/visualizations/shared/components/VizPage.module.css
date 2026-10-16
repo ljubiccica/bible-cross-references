@@ -1,5 +1,11 @@
 .page {
   display: grid;
+  /* The column is the window and no wider. Without the cap, a header that cannot shrink any
+     further (below about 350px it cannot) widens the whole grid, and the visualization and the
+     footer are laid out to that width and then clipped — the footer's credit losing its end off
+     the right of the screen. Capped, only the header itself overflows, which is the one part
+     that genuinely does not fit. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   block-size: 100dvh;
   overflow: hidden;
@@ -77,7 +83,8 @@
 
 @media (max-width: 47.99rem) {
   .header {
-    gap: var(--space-2);
+    /* Tight enough for the busiest view to keep its controls on one row. */
+    gap: var(--space-2) 0.375rem;
     padding-inline: var(--space-3);
   }
 

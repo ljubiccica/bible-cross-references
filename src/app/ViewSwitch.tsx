@@ -21,15 +21,15 @@ export function ViewSwitch({ views, current, hrefOf, onOpen }: ViewSwitchProps) 
           href={hrefOf(view)}
           className={controls.button}
           // The full title names the link even where only the short one is visible.
-          aria-label={view.title}
+          aria-label={t(view.title)}
           aria-current={view.id === current ? 'page' : undefined}
           onFollow={() => {
             onOpen(view);
           }}
         >
           <view.icon />
-          <span className={controls.longLabel}>{view.title}</span>
-          <span className={controls.shortLabel}>{view.shortTitle}</span>
+          <span className={controls.longLabel}>{t(view.title)}</span>
+          <span className={controls.shortLabel}>{t(view.shortTitle)}</span>
         </InAppLink>
       ))}
     </nav>

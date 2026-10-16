@@ -10,8 +10,8 @@ export interface GenreTogglesProps {
 }
 
 const TESTAMENTS: readonly { readonly id: Testament; readonly label: string }[] = [
-  { id: 'OT', label: t('Old Testament') },
-  { id: 'NT', label: t('New Testament') },
+  { id: 'OT', label: 'Old Testament' },
+  { id: 'NT', label: 'New Testament' },
 ];
 
 /** The genre color keys, grouped by testament; each also toggles its genre's links. */
@@ -20,7 +20,7 @@ export function GenreToggles({ hiddenGenres, onToggle }: GenreTogglesProps) {
     <div className={styles.columns}>
       {TESTAMENTS.map((testament) => (
         <div key={testament.id} className={styles.testament}>
-          <p className={styles.heading}>{testament.label}</p>
+          <p className={styles.heading}>{t(testament.label)}</p>
           {GENRES.filter((genre) => genre.testament === testament.id).map((genre) => (
             <button
               key={genre.id}
