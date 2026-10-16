@@ -1,3 +1,4 @@
+import { t } from '../../locales/ui.ts';
 import { lazy } from 'react';
 import { ReadingIcon } from '../../shared/ui/icons.tsx';
 import type { Visualization } from '../visualization.ts';
@@ -7,9 +8,9 @@ const explorer = import('./ThreadsExplorer.tsx');
 
 export const threads = {
   id: 'threads',
-  title: 'Threads',
-  shortTitle: 'Threads',
+  title: t('Threads'),
+  shortTitle: t('Threads'),
   icon: ReadingIcon,
-  openLabel: 'Read in context',
+  openLabel: t('Read in context'),
   Component: lazy(async () => ({ default: (await explorer).ThreadsExplorer })),
 } as const satisfies Visualization;

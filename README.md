@@ -176,3 +176,38 @@ UI icons are from [Lucide](https://lucide.dev/) (ISC License), plus the touch-ge
 Arcs is inspired by Chris Harrison and Christoph Römhild's
 [Bible Cross-References](https://www.chrisharrison.net/index.php/Visualizations/BibleViz), and the
 genre colors by Drawing with Data's [Bible Fascinator](https://designs.drawingwithdata.com/fascinator).
+
+### Local Slovenian OCR preview
+
+Choose **Slovenščina — Chráska 1914 (draft)** in the Bible selector, or open
+`/threads/?translation=chr1914-sl&ref=Gen.1`. English remains available in the same selector.
+This is a partial local preview: unresolved slots show an OCR-review message, not an omission claim.
+The interface and reference names remain English. Cross-reference links still use the existing
+OpenBible/KJV coordinates; the Slovenian alignment and wording are not fully reviewed.
+
+To refresh the preview after editing the working TXT, run from the workspace root:
+
+```sh
+python3 translation-prep/prepare_slovenian.py
+python3 translation-prep/sync_app_preview.py
+cd bible-cross-references
+npm run data:build
+```
+
+The draft is pinned at `data/raw/chr1914-sl.draft.json`; it is for local testing, with distribution
+metadata still unverified. No publication or upstream contribution is included in this preview.
+
+### Book-name localization
+
+`src/locales/sl/books.ts` maps all 66 OSIS book IDs to Slovenian display names,
+cleaned headings from the 1914 TXT contents, and search aliases. Labels follow the selected
+Bible's language. Canonical IDs, English importer names and verse numbering remain unchanged.
+
+Slovenian search accepts full names, abbreviations (`1 Mz 1:1`, `Jn 3:16`), ordinal dots,
+Roman numerals, and unaccented typing. Chráska's `Matevž` / `Lukež` are displayed;
+`Matej` / `Luka` also work as search aliases. The historical alternative Samuel/Kings numbering
+printed in parentheses is retained as source metadata, not as conflicting search aliases.
+
+### Interface languages
+
+Selecting the Slovenian Bible also selects the Slovenian interface; selecting BSB restores English. Interface messages live in `src/locales/en.ts` and `src/locales/sl/ui.ts`, separate from Bible text and book labels. `src/locales/ui.ts` selects the catalog, interpolates messages, and handles plural forms. Number formatting follows the selected language. Stable book IDs and reference URLs are preserved.

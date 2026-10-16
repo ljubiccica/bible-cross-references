@@ -1,3 +1,5 @@
+import { t } from '../../../locales/ui.ts';
+import { selectedTranslation } from '../../../translations/selection.ts';
 import styles from './Credits.module.css';
 
 interface CreditsProps {
@@ -10,23 +12,25 @@ interface CreditsProps {
  * essential attribution only; the details appear on wider screens.
  */
 export function Credits({ inspiration }: CreditsProps) {
+  const translation = selectedTranslation();
   return (
     <>
-      <span className={styles.detail}>Links: </span>
+      <span className={styles.detail}>{t('Links:')} </span>
       <a href="https://www.openbible.info/labs/cross-references/" target="_blank" rel="noreferrer">
         OpenBible.info
       </a>{' '}
       (CC BY 4.0
-      <span className={styles.detail}>, from the Treasury of Scripture Knowledge</span>) · Text: BSB
-      <span className={styles.detail}> (public domain)</span>
+      <span className={styles.detail}>{t(', from the Treasury of Scripture Knowledge')}</span>
+      {t(') · Text:')} {translation.abbreviation}
+      <span className={styles.detail}> ({t(translation.license.name)})</span>
       {inspiration && (
         <span className={styles.detail}>
           {' '}
-          · Inspired by{' '}
+          {t('· Inspired by')}{' '}
           <a href={inspiration.url} target="_blank" rel="noreferrer">
             {inspiration.title}
           </a>{' '}
-          by {inspiration.author}
+          {t('by')} {inspiration.author}
         </span>
       )}
     </>

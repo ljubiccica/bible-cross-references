@@ -1,3 +1,5 @@
+import { selectedTranslation } from '../translations/selection.ts';
+import { DEFAULT_TRANSLATION_ID } from '../translations/registry.ts';
 import { GENRES } from '../core/bible/genres.ts';
 import { parsePassageOsisId, toPassageOsisId, type Passage } from '../core/bible/passage.ts';
 import type { Versification } from '../core/bible/versification.ts';
@@ -79,6 +81,8 @@ export function explorerUrl(
   versification: Versification,
 ): string {
   const params = new URLSearchParams();
+  const translation = selectedTranslation();
+  if (translation.id !== DEFAULT_TRANSLATION_ID) params.set('translation', translation.id);
   if (passage !== null) {
     params.set(PASSAGE_PARAM, toPassageOsisId(passage, versification));
   }

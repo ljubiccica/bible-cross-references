@@ -1,3 +1,4 @@
+import { t } from '../../../locales/ui.ts';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { IconComponent } from '../../../shared/ui/icons.tsx';
 import styles from './controls.module.css';
@@ -79,7 +80,7 @@ export function MenuButton({ label, icon: Icon, indicator = false, children }: M
         type="button"
         className={`${styles.button} ${styles.menuButton}`}
         // Named explicitly: on phones the label is hidden and only the icon shows.
-        aria-label={indicator ? `${label} (changed)` : label}
+        aria-label={indicator ? t('{label} (changed)', { label }) : label}
         aria-expanded={open}
         aria-controls={popoverId}
         onClick={() => {

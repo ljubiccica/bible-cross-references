@@ -1,3 +1,4 @@
+import { t } from '../../locales/ui.ts';
 import { lazy } from 'react';
 import { ArcsIcon } from '../../shared/ui/icons.tsx';
 import type { Visualization } from '../visualization.ts';
@@ -8,9 +9,9 @@ const explorer = import('./ArcsExplorer.tsx');
 
 export const arcs = {
   id: 'arcs',
-  title: 'Arcs',
-  shortTitle: 'Arcs',
+  title: t('Arcs'),
+  shortTitle: t('Arcs'),
   icon: ArcsIcon,
-  openLabel: 'Show in Arcs',
+  openLabel: t('Show in Arcs'),
   Component: lazy(async () => ({ default: (await explorer).ArcsExplorer })),
 } as const satisfies Visualization;

@@ -1,7 +1,7 @@
 import { crossReferencesDatasetPath, translationDatasetPath } from '../../core/datasets/paths.ts';
 import { CROSS_REFERENCE_SOURCE_MANIFESTS } from '../../cross-references/registry.ts';
 import type { CrossReferenceSourceManifest } from '../../cross-references/source-manifest.ts';
-import { DEFAULT_TRANSLATION_ID, getTranslationManifest } from '../../translations/registry.ts';
+import { selectedTranslation } from '../../translations/selection.ts';
 import type { TranslationManifest } from '../../translations/translation-manifest.ts';
 
 /** The datasets the visualizations load: the default translation and cross-reference source. */
@@ -15,7 +15,7 @@ export function vizDatasets(): {
   if (!crossReferences) {
     throw new Error('No cross-reference source is enabled by default.');
   }
-  return { translation: getTranslationManifest(DEFAULT_TRANSLATION_ID), crossReferences };
+  return { translation: selectedTranslation(), crossReferences };
 }
 
 /**

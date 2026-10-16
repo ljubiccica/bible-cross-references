@@ -1,3 +1,5 @@
+import { t, verseCount } from '../../../locales/ui.ts';
+import { getDisplayBookName } from '../../../core/bible/book-labels.ts';
 import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { getBook } from '../../../core/bible/books.ts';
 import { GENRES, getBookGenre } from '../../../core/bible/genres.ts';
@@ -88,8 +90,8 @@ function CopyQuoteButton({
         type="button"
         className={styles.copy}
         data-copied={copied}
-        aria-label={`Copy ${reference} with a link`}
-        title="Copy with a link"
+        aria-label={t('Copy {reference} with a link', { reference })}
+        title={t('Copy with a link')}
         onClick={() => {
           void copyQuote(quote()).then(
             () => {
@@ -102,7 +104,7 @@ function CopyQuoteButton({
         {copied ? <CopiedIcon /> : <CopyIcon />}
       </button>
       <span className={styles.visuallyHidden} role="status">
-        {copied ? `${reference} copied` : ''}
+        {copied ? t('{reference} copied', { reference }) : ''}
       </span>
     </>
   );
@@ -118,10 +120,7 @@ function neighbor(passage: Passage, step: -1 | 1, versification: Versification):
 }
 
 function verseTextOrNote(translation: Translation, verse: VerseIndex): string {
-  return (
-    translation.verseText(verse) ||
-    `Omitted in the ${translation.manifest.abbreviation} (not in the earliest manuscripts).`
-  );
+  return translation.textOrNote(verse);
 }
 
 /** A linked passage longer than this shows its first verses, and how many more there are. */
@@ -166,11 +165,7 @@ function ConnectionText({
           </Fragment>
         );
       })}
-      {more > 0 && (
-        <span className={styles.moreVerses}>
-          + {formatInteger(more)} more {more === 1 ? 'verse' : 'verses'}
-        </span>
-      )}
+      {more > 0 && <span className={styles.moreVerses}>+ {verseCount(more)}</span>}
     </span>
   );
 }
@@ -205,7 +200,6 @@ export function PassagePanel({
   const genre = getBookGenre(book.id);
   const previous = neighbor(passage, -1, versification);
   const next = neighbor(passage, 1, versification);
-  const unit = passage.kind === 'verse' ? 'verse' : 'chapter';
 
   return (
     <div className={styles.panel}>
@@ -213,7 +207,7 @@ export function PassagePanel({
         <div className={styles.heading}>
           <p className={styles.eyebrow}>
             <span className={styles.key} style={{ background: GENRE_COLORS[genre.id] }} />
-            {genre.name} · {book.testament === 'OT' ? 'Old Testament' : 'New Testament'}
+            {t(genre.name)} · {book.testament === 'OT' ? t('Old Testament') : t('New Testament')}
           </p>
           <h2 className={styles.title}>{formatPassage(passage, versification)}</h2>
         </div>
@@ -221,7 +215,7 @@ export function PassagePanel({
           type="button"
           className={styles.iconButton}
           disabled={!previous}
-          aria-label={`Previous ${unit}`}
+          aria-label={t(passage.kind === 'verse' ? 'Previous verse' : 'Previous chapter')}
           onClick={() => {
             if (previous) onSelect(previous);
           }}
@@ -232,14 +226,19 @@ export function PassagePanel({
           type="button"
           className={styles.iconButton}
           disabled={!next}
-          aria-label={`Next ${unit}`}
+          aria-label={t(passage.kind === 'verse' ? 'Next verse' : 'Next chapter')}
           onClick={() => {
             if (next) onSelect(next);
           }}
         >
           <NextIcon />
         </button>
-        <button type="button" className={styles.iconButton} aria-label="Close" onClick={onClose}>
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label={t('Close')}
+          onClick={onClose}
+        >
           <CloseIcon />
         </button>
       </header>
@@ -284,8 +283,8 @@ export function PassagePanel({
         />
         <ConnectionSection
           icon={OutgoingIcon}
-          title="References"
-          description="where this passage points"
+          title={t('References')}
+          description={t('where this passage points')}
           connections={connections.outgoing}
           showSourceVerse={passage.kind === 'chapter'}
           data={data}
@@ -295,8 +294,8 @@ export function PassagePanel({
         />
         <ConnectionSection
           icon={IncomingIcon}
-          title="Referenced by"
-          description="passages that point here"
+          title={t('Referenced by')}
+          description={t('passages that point here')}
           connections={connections.incoming}
           showSourceVerse={passage.kind === 'chapter'}
           data={data}
@@ -330,7 +329,7 @@ function ChapterVerses({
   return (
     <div>
       <h3 className={styles.sectionTitle}>
-        Verses <span>· tap one to focus it</span>
+        {t('Verses')} <span>{t('· tap one to focus it')}</span>
       </h3>
       {verses.map((verse, offset) => (
         <button
@@ -385,7 +384,7 @@ function GenreBreakdown({
           setExpanded(!expanded);
         }}
       >
-        <span className={styles.genresLabel}>Connects to</span>
+        <span className={styles.genresLabel}>{t('Connects to')}</span>
         <span className={styles.strip} aria-hidden="true">
           {present.map((genre) => (
             <span
@@ -401,7 +400,10 @@ function GenreBreakdown({
           {formatInteger(connections.length)}
           <span className={styles.visuallyHidden}>
             {' '}
-            links in {present.length} {present.length === 1 ? 'genre' : 'genres'}
+            {t(t('{count} links in {genres} genres'), {
+              count: formatInteger(connections.length),
+              genres: present.length,
+            })}
           </span>
         </span>
         <ExpandIcon className={styles.chevron} />
@@ -412,7 +414,7 @@ function GenreBreakdown({
             const count = counts[genre.ordinal] ?? 0;
             return (
               <div key={genre.id} style={{ display: 'contents' }}>
-                <span>{genre.name}</span>
+                <span>{t(genre.name)}</span>
                 <span
                   className={styles.bar}
                   style={{
@@ -461,7 +463,7 @@ function ConnectionSection({
         <Icon className={styles.sectionIcon} />
         {title} <span>· {description}</span>
       </h3>
-      {connections.length === 0 && <p className={styles.muted}>None</p>}
+      {connections.length === 0 && <p className={styles.muted}>{t('None')}</p>}
       {groupByBook(visible, versification).map((group) => (
         <div
           key={`${group.book}-${String(group.connections[0]?.otherStart)}`}
@@ -472,7 +474,7 @@ function ConnectionSection({
               className={styles.key}
               style={{ background: GENRE_COLORS[getBookGenre(group.book).id] }}
             />
-            {getBook(group.book).name}
+            {getDisplayBookName(getBook(group.book))}
             <span className={styles.count}>{formatInteger(group.connections.length)}</span>
           </p>
           {group.connections.map((connection) => {
@@ -542,7 +544,7 @@ function ConnectionSection({
             setLimit(connections.length);
           }}
         >
-          Show all {formatInteger(connections.length)}
+          {t('Show all')} {formatInteger(connections.length)}
           <ExpandIcon />
         </button>
       )}

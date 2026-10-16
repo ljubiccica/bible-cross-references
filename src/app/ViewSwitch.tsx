@@ -1,3 +1,4 @@
+import { t } from '../locales/ui.ts';
 import controls from '../visualizations/shared/components/controls.module.css';
 import { InAppLink } from './InAppLink.tsx';
 import type { View, ViewId } from './views.ts';
@@ -13,7 +14,7 @@ interface ViewSwitchProps {
 /** The header's switch between the visualizations: links that keep the focused passage. */
 export function ViewSwitch({ views, current, hrefOf, onOpen }: ViewSwitchProps) {
   return (
-    <nav aria-label="Visualizations" className={controls.segmented}>
+    <nav aria-label={t('Visualizations')} className={controls.segmented}>
       {views.map((view) => (
         <InAppLink
           key={view.id}

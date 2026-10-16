@@ -19,6 +19,16 @@
       "retrievedAt": "2026-09-25",
       "license": "CC BY 4.0",
       "homepage": "https://www.openbible.info/labs/cross-references/"
+    },
+    {
+      "id": "chr1914-sl",
+      "description": "Local incomplete OCR conversion of Chr\u00e1ska 1914; preview only",
+      "url": "file:///Users/ljubiccica/Documents/ChatGPT/sp/translation-prep/chr1914-sl.draft.json",
+      "fileName": "chr1914-sl.draft.json",
+      "sha256": "37dc26174a1836dd3fccb42c2f2102d3e1886b37ba9ff7043f170a06e2f108c1",
+      "retrievedAt": "2026-10-16",
+      "license": "Unverified; local preview only",
+      "homepage": "https://www.dlib.si/"
     }
   ]
 }

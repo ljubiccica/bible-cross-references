@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { versePassage, type Passage } from '../core/bible/passage.ts';
 import { KJV_VERSIFICATION as kjv } from '../core/bible/versification.ts';
 import {
@@ -106,4 +106,15 @@ describe('explorerUrl', () => {
       ...location,
     });
   });
+});
+
+it('preserves the selected draft when navigating to another chapter', () => {
+  vi.stubGlobal('location', { search: '?translation=chr1914-sl' });
+  try {
+    expect(
+      explorerUrl(ROUTES[1], { passage: ISAIAH_53, filter: DEFAULT_LINK_FILTER }, '/', kjv),
+    ).toBe('/threads/?translation=chr1914-sl&ref=Isa.53');
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

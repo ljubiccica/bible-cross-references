@@ -1,3 +1,4 @@
+import { t } from '../locales/ui.ts';
 import { useEffect, useRef, useState } from 'react';
 import { formatPassage, type Passage } from '../core/bible/passage.ts';
 import { ErrorBoundary } from '../shared/ui/ErrorBoundary.tsx';
@@ -38,7 +39,7 @@ export function Explorer({ data }: { readonly data: VizData }) {
   const title = [
     passage && formatPassage(passage, versification),
     active === HOME ? null : active.title,
-    import.meta.env.SITE_NAME,
+    t(import.meta.env.SITE_NAME),
   ]
     .filter((part) => part !== null)
     .join(' · ');
@@ -69,7 +70,7 @@ export function Explorer({ data }: { readonly data: VizData }) {
             setGeneration((value) => value + 1);
           }}
         >
-          {import.meta.env.SITE_NAME}
+          {t(import.meta.env.SITE_NAME)}
         </InAppLink>
       </h1>
       <ViewSwitch
@@ -100,7 +101,7 @@ export function Explorer({ data }: { readonly data: VizData }) {
           fallback={(error) => (
             <VizPage masthead={masthead} credits={<Credits />}>
               <p role="alert" className={styles.error}>
-                {view.title} could not start: {error.message}
+                {t('{view} could not start: {error}', { view: view.title, error: error.message })}
               </p>
             </VizPage>
           )}
@@ -126,7 +127,9 @@ export function Explorer({ data }: { readonly data: VizData }) {
                   '',
                   versification,
                 ),
-                import.meta.env.SITE_URL,
+                data.translation.manifest.previewNotice
+                  ? window.location.origin
+                  : import.meta.env.SITE_URL,
               ).href
             }
             passageLinks={(target) =>
