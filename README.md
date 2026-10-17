@@ -44,6 +44,14 @@ The details panel shows the passage's text, where its connections go by genre, a
 with its text. Each one is a link: follow it to travel there. "Read in context" opens the passage in
 Threads.
 
+A verse also lists the Hebrew or Greek words behind it — the dictionary form, how it is said and
+what it means — and, under each one, every other verse that uses the same word, least common
+first. It is a different kind of link from a cross-reference and is kept apart from it: a
+cross-reference is somebody's judgement that two passages belong together, while this is the plain
+fact that they share a word. Acts 5:14 and Luke 5:6, for instance, share πλῆθος (_plēthos_,
+"multitude"), which no cross-reference joins. Words used in more than 100 verses are left out, and
+the text of the verse in its original language is never shown: only the dictionary form.
+
 ### Threads: read with the connections in view
 
 ![Threads: Psalm 23 with threads from each verse to where its cross-references land](public/screenshots/threads.jpg)
@@ -95,6 +103,7 @@ The app is built on openly licensed datasets only:
 | Bible text       | [Berean Standard Bible](https://berean.bible/) (BSB), the default                                                                     | [Public domain](https://berean.bible/terms.htm)                                                |
 | Bible text       | [King James Version](https://ebible.org/Scriptures/details.php?id=eng-kjv2006) (KJV), the 1769 text, from eBible.org                  | [Public domain](https://ebible.org/Scriptures/details.php?id=eng-kjv2006) (see the note below) |
 | Cross-references | [OpenBible.info](https://www.openbible.info/labs/cross-references/), largely from the public-domain _Treasury of Scripture Knowledge_ | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                      |
+| Original words   | [STEPBible](https://github.com/STEPBible/STEPBible-Data) (TAHOT, TAGNT and their lexicons), from Tyndale House, Cambridge             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                      |
 
 A note on the KJV: it is public domain in the United States and most of the world, but in the
 United Kingdom rights in the Authorized Version are vested in the Crown and administered by the
@@ -161,6 +170,7 @@ src/core/                Framework-free domain code shared by the app and the pi
   bible/                 Books, genres, versification, verse references, passages
   datasets/              Dataset IDs, file formats and their runtime validation
 src/translations/        Translation plugins: manifests, registry, loading, text search
+src/words/               Original-language words: manifest, registry, per-verse index
 src/cross-references/    Cross-reference plugins: manifests, registry, bidirectional index
 src/app/                 The app: its views, the URL state and the view switch
 src/visualizations/      One folder per visualization (Arcs, Threads), plus shared blocks
@@ -232,6 +242,9 @@ The code is released under the [MIT License](LICENSE). The data keeps its own li
 > Scripture text: King James Version (Authorized Version), the 1769 text, public domain in the
 > United States and most of the world; in the United Kingdom rights are vested in the Crown and
 > administered by the Crown's patentee, Cambridge University Press.
+> Original-language words: STEP Bible (CC BY 4.0), based on work at Tyndale House, Cambridge.
+> Modified: reduced to the dictionary forms used in each verse, keyed to KJV verse numbering,
+> with psalm superscriptions left out.
 
 UI icons are from [Lucide](https://lucide.dev/) (ISC License), plus the touch-gesture icons from
 [Material Design Icons](https://fonts.google.com/icons) (Apache License 2.0), via

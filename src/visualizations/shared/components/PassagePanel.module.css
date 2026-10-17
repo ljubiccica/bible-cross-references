@@ -69,6 +69,10 @@
   display: grid;
   gap: var(--space-4);
   align-content: start;
+  /* The height of a section's band. The expanded word sticks directly below one, so both the
+     band and that offset are measured from here. */
+  --band-height: 2.375rem;
+
   padding: var(--space-3) var(--space-4) var(--space-6);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -121,38 +125,6 @@
 }
 
 /* A quiet, set-apart summary, so the connections below stay the focus. */
-.genres {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-}
-
-.genresToggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  inline-size: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-  text-align: start;
-}
-
-.genresToggle:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-  border-radius: var(--radius);
-}
-
-.genresLabel {
-  flex: none;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
 /* The genres' shares of the links, in their colors. */
 .strip {
@@ -172,10 +144,6 @@
   flex: none;
   color: var(--color-text-muted);
   transition: rotate 150ms ease;
-}
-
-.genresToggle[aria-expanded='true'] .chevron {
-  rotate: 180deg;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -198,7 +166,7 @@
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   gap: var(--space-1) var(--space-2);
   align-items: center;
-  padding: var(--space-1) var(--space-3) var(--space-3);
+  padding-block-end: var(--space-2);
   font-size: 0.8125rem;
 }
 
@@ -370,4 +338,170 @@
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   text-align: end;
+}
+
+/* The dictionary words of a verse. The form leads, how it sounds and what it means follow, and
+   the number says how many verses in the whole Bible share it. */
+.word .itemRef {
+  inline-size: 100%;
+}
+
+.word strong {
+  font-size: 1.0625em;
+}
+
+.wordSound {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+.word .count {
+  margin-inline-start: auto;
+  font-size: 0.8125rem;
+}
+
+.word .chevron {
+  flex: none;
+  color: var(--color-text-muted);
+  transition: rotate 0.15s;
+}
+
+.word[aria-expanded='true'] .chevron {
+  rotate: 180deg;
+}
+
+/* While a word is open, it stays just below its section's band, so a reader scrolling its
+   verses can see both which section this is and whose verses these are. It is sticky inside its
+   own group, so it gives way as the next word arrives rather than piling up. The band's offset
+   is measured from the scrollport, which starts a padding's width below the panel's top edge. */
+.word[aria-expanded='true'] {
+  position: sticky;
+  inset-block-start: calc(var(--band-height) - var(--space-3));
+  z-index: 1;
+  background: var(--color-surface);
+}
+
+/* Its verses hang under it, indented the way a list under a heading would be. */
+.wordVerse {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--color-border);
+  border-radius: 0;
+  margin-inline-start: var(--space-2);
+}
+
+.wordVerse[aria-current='true'] {
+  border-inline-start-color: var(--color-accent);
+}
+
+/* The credit sits with the data it belongs to rather than in the footer, which has no room for
+   it and is not where these words are read. */
+.credit {
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word .chevron {
+    transition: none;
+  }
+}
+
+/* A section of the panel. Its heading is a band the width of the panel that stays at the top
+   while the section's own content scrolls under it, so the answer to "what am I looking at" is
+   always on screen — and a band is heavy enough that the switch from one section to the next
+   cannot be scrolled past unnoticed, which a line of small capitals was not. */
+.section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sectionHeader {
+  position: sticky;
+  /* The panel's own top padding sits above the scrollport, so the band is pulled up by exactly
+     that much: nothing shows in the gap as content passes beneath it. */
+  inset-block-start: calc(var(--space-3) * -1);
+  z-index: 2;
+  margin: 0 calc(var(--space-4) * -1);
+}
+
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: var(--band-height);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-block: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+}
+
+.sectionToggle:hover {
+  background: var(--color-border);
+}
+
+.sectionToggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.sectionName {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sectionToggle[aria-expanded='true'] .chevron {
+  rotate: 180deg;
+}
+
+/* Matches the name beside it: the number is a label, not a figure to read. */
+.sectionToggle .count {
+  flex: none;
+  font-size: 0.75rem;
+}
+
+/* The sentence that says what the section holds gives way first when the panel is narrow. */
+.sectionNote {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sectionBody[hidden] {
+  display: none;
+}
+
+/* Beneath a band this heavy, a book's name is a label rather than a heading. */
+.sectionBody .groupHeader {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+/* Touch: a band is a target like any other. */
+@media (pointer: coarse) {
+  .scroll {
+    --band-height: 2.75rem;
+  }
+}
+
+/* The narrowest phones: the band's name, count and chevron need the whole width, so the sentence
+   explaining the section goes. The name alone still says which section this is, which is the
+   point of the band. */
+@media (max-width: 22.49rem) {
+  .sectionNote {
+    display: none;
+  }
 }

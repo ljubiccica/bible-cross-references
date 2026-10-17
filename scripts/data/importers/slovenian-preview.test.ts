@@ -5,6 +5,7 @@ import { parseTranslationTextFile } from '../../../src/core/datasets/formats.ts'
 import { selectedTranslation } from '../../../src/translations/selection.ts';
 import { getTranslationManifest } from '../../../src/translations/registry.ts';
 import { Translation } from '../../../src/translations/translation.ts';
+import { verseTextOrNote } from '../../../src/translations/verse-text.ts';
 
 const file = parseTranslationTextFile(
   JSON.parse(
@@ -66,6 +67,7 @@ describe('Slovenian local preview', () => {
     );
     expect(incomplete.isOmitted(index)).toBe(false);
     expect(incomplete.textOrNote(index)).toContain('preverjanje OCR');
+    expect(verseTextOrNote(incomplete, index)).toBe(incomplete.textOrNote(index));
   });
   it('loads all books and preserves explicitly mapped split and merged verses', () => {
     expect(file.verses).toHaveLength(31102);

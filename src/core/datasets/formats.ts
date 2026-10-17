@@ -9,7 +9,8 @@ import {
   expectString,
   expectStringArray,
 } from '../lib/validation.ts';
-import type { CrossReferenceSourceId, TranslationId } from './ids.ts';
+import type { CrossReferenceSourceId, TranslationId, WordSourceId } from './ids.ts';
+import type { LicenseInfo } from './metadata.ts';
 
 /**
  * File formats of the generated datasets, shared by the data pipeline (which writes them) and the
@@ -70,6 +71,36 @@ export interface CrossReferencesFile extends DatasetFileBase<'cross-references'>
   /** Number of data rows in the raw source file. */
   readonly sourceRowCount: number;
   readonly links: CrossReferenceColumns;
+}
+
+/**
+ * Words of the original languages, one entry per dictionary form, in the same columnar layout as
+ * the links: the verses of word `w` occupy positions `offsets[w]` to `offsets[w + 1] - 1` of
+ * `verses`. Only the dictionary form is kept, never the text of a verse.
+ */
+export interface OriginalWordColumns {
+  /** Extended Strong's number, e.g. `G4128`. Sorted, so a word can be found by binary search. */
+  readonly strongs: readonly string[];
+  /** Dictionary form in its own script, e.g. `πλῆθος`. */
+  readonly lemma: readonly string[];
+  readonly transliteration: readonly string[];
+  /** A few words of English, e.g. `multitude`. */
+  readonly gloss: readonly string[];
+  readonly offsets: readonly number[];
+  readonly verses: readonly number[];
+}
+
+export interface OriginalWordsFile extends DatasetFileBase<'original-words'> {
+  readonly sourceId: WordSourceId;
+  /** Carried in the file itself: it is served on its own, and a copy should say what it is. */
+  readonly license: LicenseInfo;
+  readonly attribution: string;
+  /**
+   * Words used in more verses than this are left out. A word that appears everywhere says
+   * nothing about the verse it is in, and the pairs for it outweigh all the rest together.
+   */
+  readonly maxVerses: number;
+  readonly words: OriginalWordColumns;
 }
 
 function parseProvenance(value: unknown, path: string): DatasetProvenance {
@@ -148,6 +179,33 @@ export function parseCrossReferencesFile(
       targetStart: expectIntegerArray(links['targetStart'], 'links.targetStart'),
       targetEnd: expectIntegerArray(links['targetEnd'], 'links.targetEnd'),
       votes: expectIntegerArray(links['votes'], 'links.votes'),
+    },
+  };
+}
+
+export function parseOriginalWordsFile(
+  json: unknown,
+  expected: ExpectedDataset<WordSourceId>,
+): OriginalWordsFile {
+  const { record, base } = parseFileBase(json, 'original-words', expected.versification);
+  const words = expectRecord(record['words'], 'words');
+  const license = expectRecord(record['license'], 'license');
+  return {
+    ...base,
+    sourceId: expectOneOf(record['sourceId'], [expected.id], 'sourceId'),
+    license: {
+      name: expectString(license['name'], 'license.name'),
+      url: expectString(license['url'], 'license.url'),
+    },
+    attribution: expectString(record['attribution'], 'attribution'),
+    maxVerses: expectInteger(record['maxVerses'], 'maxVerses'),
+    words: {
+      strongs: expectStringArray(words['strongs'], 'words.strongs'),
+      lemma: expectStringArray(words['lemma'], 'words.lemma'),
+      transliteration: expectStringArray(words['transliteration'], 'words.transliteration'),
+      gloss: expectStringArray(words['gloss'], 'words.gloss'),
+      offsets: expectIntegerArray(words['offsets'], 'words.offsets'),
+      verses: expectIntegerArray(words['verses'], 'words.verses'),
     },
   };
 }

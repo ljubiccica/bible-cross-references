@@ -14,6 +14,7 @@ import {
   LuEllipsisVertical,
   LuGithub,
   LuHand,
+  LuLanguages,
   LuMonitorDown,
   LuMouse,
   LuMousePointerClick,
@@ -82,6 +83,9 @@ export const ClickIcon = decorative(LuMousePointerClick);
 export const TapIcon = decorative(MdOutlineTouchApp);
 export const HoldAndSlideIcon = decorative(MdOutlineSwipeVertical);
 export const PinchIcon = decorative(MdOutlinePinch);
+
+// The words of the original languages, shown beside a verse.
+export const WordsIcon = decorative(LuLanguages);
 
 // Settings
 export const FiltersIcon = decorative(LuSlidersHorizontal);

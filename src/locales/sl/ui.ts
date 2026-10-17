@@ -251,4 +251,17 @@ export const sl = {
   '{name} could not be loaded.': 'Prevoda {name} ni bilo mogoče naložiti.',
   'Slovenian text: Chráska (1914), public-domain source digitized by dLib.si. OCR errors corrected for this app.':
     'Slovensko besedilo: Chráska (1914), izvirnik v javni domeni, digitaliziran na dLib.si. Napake OCR popravljene za to aplikacijo.',
+  passages: 'odlomki',
+  verses: 'vrstice',
+  links: 'povezave',
+  words: 'besede',
+  '{count} genres': '{count} zvrsti',
+  '{count} genre': '{count} zvrst',
+  'Same Hebrew word': 'Ista hebrejska beseda',
+  'Same Greek word': 'Ista grška beseda',
+  'where else it is used': 'kje drugje se pojavi',
+  'Show {count} more': 'Prikaži še {count}',
+  'Words:': 'Besede:',
+  '), based on work at Tyndale House, Cambridge; reduced to dictionary forms. Words used in more than {count} verses are left out.':
+    '), na podlagi dela ustanove Tyndale House, Cambridge; skrčeno na slovarske oblike. Besede, uporabljene v več kot {count} vrsticah, so izpuščene.',
 } satisfies Record<keyof typeof en, string>;

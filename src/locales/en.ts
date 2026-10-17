@@ -250,4 +250,17 @@ export const en = {
   '{name} could not be loaded.': '{name} could not be loaded.',
   'Slovenian text: Chráska (1914), public-domain source digitized by dLib.si. OCR errors corrected for this app.':
     'Slovenian text: Chráska (1914), public-domain source digitized by dLib.si. OCR errors corrected for this app.',
+  passages: 'passages',
+  verses: 'verses',
+  links: 'links',
+  words: 'words',
+  '{count} genres': '{count} genres',
+  '{count} genre': '{count} genre',
+  'Same Hebrew word': 'Same Hebrew word',
+  'Same Greek word': 'Same Greek word',
+  'where else it is used': 'where else it is used',
+  'Show {count} more': 'Show {count} more',
+  'Words:': 'Words:',
+  '), based on work at Tyndale House, Cambridge; reduced to dictionary forms. Words used in more than {count} verses are left out.':
+    '), based on work at Tyndale House, Cambridge; reduced to dictionary forms. Words used in more than {count} verses are left out.',
 } as const;

@@ -1,4 +1,4 @@
-import type { CrossReferenceSourceId, TranslationId } from './ids.ts';
+import type { CrossReferenceSourceId, TranslationId, WordSourceId } from './ids.ts';
 
 /**
  * Location of generated dataset files, relative to the site root. The data pipeline writes them
@@ -12,4 +12,8 @@ export function translationDatasetPath(id: TranslationId): string {
 
 export function crossReferencesDatasetPath(id: CrossReferenceSourceId): string {
   return `${DATASETS_DIRECTORY}/cross-references/${id}.json`;
+}
+
+export function originalWordsDatasetPath(id: WordSourceId): string {
+  return `${DATASETS_DIRECTORY}/words/${id}.json`;
 }

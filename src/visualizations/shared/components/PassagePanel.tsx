@@ -1,6 +1,7 @@
 import { t, verseCount } from '../../../locales/ui.ts';
 import { getDisplayBookName } from '../../../core/bible/book-labels.ts';
-import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+
 import { getBook } from '../../../core/bible/books.ts';
 import { GENRES, getBookGenre } from '../../../core/bible/genres.ts';
 import {
@@ -16,23 +17,27 @@ import type { VerseIndex } from '../../../core/bible/verse-ref.ts';
 import type { Versification } from '../../../core/bible/versification.ts';
 import { elementAt } from '../../../core/lib/array.ts';
 import { formatInteger } from '../../../shared/lib/format.ts';
-import { useBooleanPreference } from '../../../shared/lib/preferences.ts';
 import {
   CloseIcon,
   CopiedIcon,
   CopyIcon,
   ExpandIcon,
+  GenresIcon,
   IncomingIcon,
   NextIcon,
   OutgoingIcon,
+  ReadingIcon,
   PreviousIcon,
   type IconComponent,
 } from '../../../shared/ui/icons.tsx';
 import type { Translation } from '../../../translations/translation.ts';
+import { verseTextOrNote } from '../../../translations/verse-text.ts';
 import { collectConnections, groupByBook, landingNote, type Connection } from '../connections.ts';
 import type { LinkFilter } from '../link-filter.ts';
 import { canCopy, copyQuote, quotePassage, type PassageQuote } from '../passage-quote.ts';
 import { GENRE_COLORS, GENRE_HEX } from '../palette.ts';
+import { OriginalWordsSection } from './OriginalWordsSection.tsx';
+import { PanelSection } from './PanelSection.tsx';
 import type { VizData } from '../viz-data.ts';
 import styles from './PassagePanel.module.css';
 
@@ -117,10 +122,6 @@ function neighbor(passage: Passage, step: -1 | 1, versification: Versification):
     return null;
   }
   return passage.kind === 'verse' ? versePassage(verse) : chapterPassageOf(verse, versification);
-}
-
-function verseTextOrNote(translation: Translation, verse: VerseIndex): string {
-  return translation.textOrNote(verse);
 }
 
 /** A linked passage longer than this shows its first verses, and how many more there are. */
@@ -282,9 +283,12 @@ export function PassagePanel({
           verseGenres={verseGenres}
         />
         <ConnectionSection
+          id="references"
           icon={OutgoingIcon}
           title={t('References')}
           description={t('where this passage points')}
+          countLabel={t('passages')}
+
           connections={connections.outgoing}
           showSourceVerse={passage.kind === 'chapter'}
           data={data}
@@ -293,9 +297,12 @@ export function PassagePanel({
           shareUrl={shareUrl}
         />
         <ConnectionSection
+          id="referenced-by"
           icon={IncomingIcon}
           title={t('Referenced by')}
           description={t('passages that point here')}
+          countLabel={t('passages')}
+
           connections={connections.incoming}
           showSourceVerse={passage.kind === 'chapter'}
           data={data}
@@ -303,6 +310,10 @@ export function PassagePanel({
           onPreview={onPreview}
           shareUrl={shareUrl}
         />
+        {/* A verse at a time: a chapter's words would be most of its vocabulary. */}
+        {passage.kind === 'verse' && (
+          <OriginalWordsSection verse={passage.verse} data={data} onSelect={onSelect} />
+        )}
       </div>
     </div>
   );
@@ -327,10 +338,14 @@ function ChapterVerses({
   }
   const verses = Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
   return (
-    <div>
-      <h3 className={styles.sectionTitle}>
-        {t('Verses')} <span>{t('· tap one to focus it')}</span>
-      </h3>
+    <PanelSection
+      id="verses"
+      icon={ReadingIcon}
+      title={t('Verses')}
+      description={t('tap one to focus it')}
+      count={verses.length}
+      countLabel={t('verses')}
+    >
       {verses.map((verse, offset) => (
         <button
           key={verse}
@@ -345,7 +360,7 @@ function ChapterVerses({
           <span className={styles.count}>{formatInteger(counts.get(verse) ?? 0)}</span>
         </button>
       ))}
-    </div>
+    </PanelSection>
   );
 }
 
@@ -361,8 +376,6 @@ function GenreBreakdown({
   readonly connections: readonly Connection[];
   readonly verseGenres: Uint8Array;
 }) {
-  const [expanded, setExpanded] = useBooleanPreference('genre-breakdown-expanded', false);
-  const detailsId = useId();
   if (connections.length === 0) {
     return null;
   }
@@ -374,17 +387,17 @@ function GenreBreakdown({
   const max = Math.max(...counts);
   const present = GENRES.filter((genre) => (counts[genre.ordinal] ?? 0) > 0);
   return (
-    <section className={styles.genres}>
-      <button
-        type="button"
-        className={styles.genresToggle}
-        aria-expanded={expanded}
-        aria-controls={detailsId}
-        onClick={() => {
-          setExpanded(!expanded);
-        }}
-      >
-        <span className={styles.genresLabel}>{t('Connects to')}</span>
+    <PanelSection
+      id="connects-to"
+      icon={GenresIcon}
+      title={t('Connects to')}
+      description={t(present.length === 1 ? '{count} genre' : '{count} genres', {
+        count: formatInteger(present.length),
+      })}
+      count={connections.length}
+      countLabel={t('links')}
+      defaultOpen={false}
+      trailing={
         <span className={styles.strip} aria-hidden="true">
           {present.map((genre) => (
             <span
@@ -396,46 +409,36 @@ function GenreBreakdown({
             />
           ))}
         </span>
-        <span className={styles.count}>
-          {formatInteger(connections.length)}
-          <span className={styles.visuallyHidden}>
-            {' '}
-            {t(t('{count} links in {genres} genres'), {
-              count: formatInteger(connections.length),
-              genres: present.length,
-            })}
-          </span>
-        </span>
-        <ExpandIcon className={styles.chevron} />
-      </button>
-      {expanded && (
-        <div id={detailsId} className={styles.breakdown}>
-          {GENRES.filter((genre) => (counts[genre.ordinal] ?? 0) > 0).map((genre) => {
-            const count = counts[genre.ordinal] ?? 0;
-            return (
-              <div key={genre.id} style={{ display: 'contents' }}>
-                <span>{t(genre.name)}</span>
-                <span
-                  className={styles.bar}
-                  style={{
-                    inlineSize: `${Math.max((count / max) * 100, 2)}%`,
-                    background: elementAt(GENRE_HEX, genre.ordinal),
-                  }}
-                />
-                <span className={styles.count}>{formatInteger(count)}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </section>
+      }
+    >
+      <div className={styles.breakdown}>
+        {present.map((genre) => {
+          const count = counts[genre.ordinal] ?? 0;
+          return (
+            <div key={genre.id} style={{ display: 'contents' }}>
+              <span>{t(genre.name)}</span>
+              <span
+                className={styles.bar}
+                style={{
+                  inlineSize: `${Math.max((count / max) * 100, 2)}%`,
+                  background: elementAt(GENRE_HEX, genre.ordinal),
+                }}
+              />
+              <span className={styles.count}>{formatInteger(count)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </PanelSection>
   );
 }
 
 function ConnectionSection({
+  id,
   icon: Icon,
   title,
   description,
+  countLabel,
   connections,
   showSourceVerse,
   data,
@@ -443,10 +446,13 @@ function ConnectionSection({
   onPreview,
   shareUrl,
 }: {
+  /** Identifies the section in storage, so a reader's choice to close it lasts. */
+  readonly id: string;
   /** The link direction, drawn as in the reading-threads direction switch. */
   readonly icon: IconComponent;
   readonly title: string;
   readonly description: string;
+  readonly countLabel: string;
   readonly connections: readonly Connection[];
   readonly showSourceVerse: boolean;
   readonly data: VizData;
@@ -458,12 +464,16 @@ function ConnectionSection({
   const { versification, translation } = data;
   const visible = connections.slice(0, limit);
   return (
-    <section>
-      <h3 className={styles.sectionTitle}>
-        <Icon className={styles.sectionIcon} />
-        {title} <span>· {description}</span>
-      </h3>
+    <PanelSection
+      id={id}
+      icon={Icon}
+      title={title}
+      description={description}
+      count={connections.length}
+      countLabel={countLabel}
+    >
       {connections.length === 0 && <p className={styles.muted}>{t('None')}</p>}
+
       {groupByBook(visible, versification).map((group) => (
         <div
           key={`${group.book}-${String(group.connections[0]?.otherStart)}`}
@@ -548,6 +558,6 @@ function ConnectionSection({
           <ExpandIcon />
         </button>
       )}
-    </section>
+    </PanelSection>
   );
 }

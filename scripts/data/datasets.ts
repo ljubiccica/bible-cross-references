@@ -1,13 +1,25 @@
 import { parseTranslationTextFile } from '../../src/core/datasets/formats.ts';
-import type { CrossReferencesFile, TranslationTextFile } from '../../src/core/datasets/formats.ts';
-import type { CrossReferenceSourceId, TranslationId } from '../../src/core/datasets/ids.ts';
+import type {
+  CrossReferencesFile,
+  OriginalWordsFile,
+  TranslationTextFile,
+} from '../../src/core/datasets/formats.ts';
+import type {
+  CrossReferenceSourceId,
+  TranslationId,
+  WordSourceId,
+} from '../../src/core/datasets/ids.ts';
+
 import {
   crossReferencesDatasetPath,
+  originalWordsDatasetPath,
   translationDatasetPath,
 } from '../../src/core/datasets/paths.ts';
 import { importBsbText } from './importers/bsb.ts';
 import { importEbibleVerseLines } from './importers/ebible-vpl.ts';
 import { importOpenBibleCrossReferences } from './importers/openbible.ts';
+import { getWordSourceManifest } from '../../src/words/registry.ts';
+import { importStepBibleWords, type TaggedLanguage } from './importers/stepbible.ts';
 import { extractZipTextEntry } from './lib/files.ts';
 import type { RawSource } from './lib/sources.ts';
 
@@ -24,7 +36,7 @@ export interface DatasetBuilder {
   readonly outputPath: string;
   readonly build: (
     readSource: RawSourceReader,
-  ) => Promise<TranslationTextFile | CrossReferencesFile>;
+  ) => Promise<TranslationTextFile | CrossReferencesFile | OriginalWordsFile>;
 }
 
 function provenanceOf({ url, sha256, retrievedAt }: RawSource) {
@@ -78,7 +90,60 @@ const CROSS_REFERENCE_BUILDERS: Readonly<Record<CrossReferenceSourceId, DatasetB
   },
 };
 
+/**
+ * The tagged Hebrew and Greek: six files of words and two lexicons, from which only the
+ * dictionary forms and the verses they occur in are kept.
+ */
+const TAGGED_SOURCES: readonly { readonly id: string; readonly language: TaggedLanguage }[] = [
+  { id: 'stepbible-tahot-gen-deu', language: 'hebrew' },
+  { id: 'stepbible-tahot-jos-est', language: 'hebrew' },
+  { id: 'stepbible-tahot-job-sng', language: 'hebrew' },
+  { id: 'stepbible-tahot-isa-mal', language: 'hebrew' },
+  { id: 'stepbible-tagnt-mat-jhn', language: 'greek' },
+  { id: 'stepbible-tagnt-act-rev', language: 'greek' },
+];
+
+const LEXICON_SOURCES: readonly { readonly id: string; readonly language: TaggedLanguage }[] = [
+  { id: 'stepbible-tbesh', language: 'hebrew' },
+  { id: 'stepbible-tbesg', language: 'greek' },
+];
+
+/**
+ * A word used in more verses than this says nothing about the verse it is in, and the pairs for
+ * it would outweigh every other word together (a third of the data, against two thirds for the
+ * 577 commonest words).
+ */
+const MAX_VERSES_PER_WORD = 100;
+
+const WORD_BUILDERS: Readonly<Record<WordSourceId, DatasetBuilder>> = {
+  stepbible: {
+    outputPath: originalWordsDatasetPath('stepbible'),
+    build: async (readSource) => {
+      const read = async ({ id, language }: { id: string; language: TaggedLanguage }) => {
+        const { source, content } = await readSource(id);
+        return { source, language, text: content.toString('utf8') };
+      };
+      const files = await Promise.all(TAGGED_SOURCES.map(read));
+      const lexicons = await Promise.all(LEXICON_SOURCES.map(read));
+      const first = files[0];
+      if (!first) {
+        throw new Error('No tagged sources are configured.');
+      }
+      const manifest = getWordSourceManifest('stepbible');
+      return importStepBibleWords(files, lexicons, {
+        maxVerses: MAX_VERSES_PER_WORD,
+        license: manifest.license,
+        attribution: manifest.attribution,
+        // Every file is pinned; the first stands for the set in the dataset's provenance, and
+        // the rest are listed beside it in data/sources.json.
+        provenance: provenanceOf(first.source),
+      });
+    },
+  },
+};
+
 export const DATASET_BUILDERS: readonly DatasetBuilder[] = [
   ...Object.values(TRANSLATION_BUILDERS),
   ...Object.values(CROSS_REFERENCE_BUILDERS),
+  ...Object.values(WORD_BUILDERS),
 ];

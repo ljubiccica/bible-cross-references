@@ -8,6 +8,8 @@ import { createCachedLoader, type CachedLoader } from '../../shared/lib/cached-l
 import { loadTranslation } from '../../translations/load-translation.ts';
 import { getTranslationManifest } from '../../translations/registry.ts';
 import type { Translation } from '../../translations/translation.ts';
+import { loadOriginalWords, type OriginalWordsDataset } from '../../words/load-original-words.ts';
+import { getWordSourceManifest } from '../../words/registry.ts';
 import { computeVerseGenres } from './verse-genres.ts';
 import { vizCrossReferenceSource } from './viz-datasets.ts';
 
@@ -65,4 +67,31 @@ export function resetTranslation(id: TranslationId): void {
 /** Forgets every loaded text, so a failed download can be retried. */
 export function resetTranslations(): void {
   translationLoaders.clear();
+}
+
+/**
+ * The words of the Hebrew and Greek. Nothing needs them until a reader opens a verse and looks
+ * past its cross-references, so unlike the rest this one is fetched on first use rather than at
+ * startup (see `OriginalWordsSection`).
+ */
+export const originalWordsLoader = createCachedLoader(async (): Promise<OriginalWordsDataset> => {
+  const { dataset } = await loadOriginalWords(getWordSourceManifest('stepbible'));
+  loadedOriginalWords = dataset;
+  return dataset;
+});
+
+/**
+ * The words once they are here, readable without waiting. The details panel is rebuilt from
+ * scratch on every passage, and asking the loader again would blank the section for a frame
+ * each time even though nothing needs fetching.
+ */
+let loadedOriginalWords: OriginalWordsDataset | null = null;
+
+export function originalWordsIfLoaded(): OriginalWordsDataset | null {
+  return loadedOriginalWords;
+}
+
+/** Forgets a failed download, so the next verse opened tries again instead of giving up. */
+export function resetOriginalWords(): void {
+  originalWordsLoader.reset();
 }
