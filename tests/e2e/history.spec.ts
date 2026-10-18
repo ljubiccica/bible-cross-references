@@ -75,16 +75,15 @@ test.describe('browser history', () => {
     await expect(page.locator(PANEL).getByRole('heading', { name: 'Isaiah 53:5' })).toBeVisible();
   });
 
-  test('Back returns to the translation that was being read', async ({ page }) => {
-    // Switched through the picker rather than by loading a second URL. Each translation is about
-    // 4 MB, and a second `goto` plus the `goBack` after it would fetch three of them on a runner
-    // with a cold cache — which is how this took longer than a minute on CI while passing here.
-    // Through the picker there is one extra download, and Back is a history pop with none.
-    await page.goto('./?ref=John.3.16&t=bsb');
+  test('changing the translation does not add a step to go Back through', async ({ page }) => {
+    // Deliberate, and worth pinning: `Explorer` replaces the entry rather than pushing one, so
+    // Back returns to the previous *passage* and not to the previous text. A reader comparing
+    // three translations of one verse should not have to press Back three times to leave it.
+    await page.goto('./?ref=Gen.1.1');
     await waitForApp(page);
-    await expect(page.locator(ACTIVE).getByRole('button', { name: /Translation/ })).toContainText(
-      'BSB',
-    );
+    await page.locator(ACTIVE).getByRole('searchbox').fill('John 3:16');
+    await page.locator(ACTIVE).getByRole('searchbox').press('Enter');
+    await expect(page.locator(PANEL).getByRole('heading', { name: 'John 3:16' })).toBeVisible();
 
     await page
       .locator(ACTIVE)
@@ -97,11 +96,11 @@ test.describe('browser history', () => {
     await expect(page.locator(ACTIVE).getByRole('button', { name: /Translation/ })).toContainText(
       'KJV',
     );
+    expect(query(page)).toContain('t=kjv');
 
+    // One press, and the text change is skipped along with it: back at the first passage.
     await page.goBack();
-    await expect(page.locator(ACTIVE).getByRole('button', { name: /Translation/ })).toContainText(
-      'BSB',
-    );
+    await expect(page.locator(PANEL).getByRole('heading', { name: 'Genesis 1:1' })).toBeVisible();
   });
 
   test('Back crosses between the two views', async ({ page }) => {
