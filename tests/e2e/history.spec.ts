@@ -76,17 +76,29 @@ test.describe('browser history', () => {
   });
 
   test('Back returns to the translation that was being read', async ({ page }) => {
+    // Switched through the picker rather than by loading a second URL. Each translation is about
+    // 4 MB, and a second `goto` plus the `goBack` after it would fetch three of them on a runner
+    // with a cold cache — which is how this took longer than a minute on CI while passing here.
+    // Through the picker there is one extra download, and Back is a history pop with none.
     await page.goto('./?ref=John.3.16&t=bsb');
     await waitForApp(page);
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Translation/ })).toContainText(
+      'BSB',
+    );
 
-    await page.goto('./?ref=John.3.16&t=kjv');
-    await waitForApp(page);
+    await page
+      .locator(ACTIVE)
+      .getByRole('button', { name: /Translation/ })
+      .click();
+    await page
+      .locator(ACTIVE)
+      .getByRole('radio', { name: /King James/ })
+      .check();
     await expect(page.locator(ACTIVE).getByRole('button', { name: /Translation/ })).toContainText(
       'KJV',
     );
 
     await page.goBack();
-    await waitForApp(page);
     await expect(page.locator(ACTIVE).getByRole('button', { name: /Translation/ })).toContainText(
       'BSB',
     );
