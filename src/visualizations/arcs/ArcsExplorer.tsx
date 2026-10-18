@@ -9,6 +9,7 @@ import {
 } from '../../shared/ui/icons.tsx';
 import { Credits } from '../shared/components/Credits.tsx';
 import { FiltersMenu } from '../shared/components/FiltersMenu.tsx';
+import { useLocalization } from '../../i18n/use-locale.tsx';
 import { GenreLegend } from '../shared/components/GenreLegend.tsx';
 import { toggleGenre } from '../shared/components/GenreToggles.tsx';
 import { LinkStats } from '../shared/components/LinkStats.tsx';
@@ -40,6 +41,7 @@ export function ArcsExplorer({
   passageLinks,
   shareUrl,
 }: VisualizationProps) {
+  const { t } = useLocalization();
   const { index } = data.crossReferences;
   const linkIds = useMemo(
     () => selectLinks(index, data.verseGenres, filter),
@@ -108,12 +110,14 @@ export function ArcsExplorer({
         hint={{
           pointer: (
             <>
-              <ScrollIcon /> to zoom · <DragIcon /> to pan · <ClickIcon /> to focus
+              <ScrollIcon /> {t('hint.zoom')} · <DragIcon /> {t('hint.pan')} · <ClickIcon />{' '}
+              {t('hint.focus')}
             </>
           ),
           touch: (
             <>
-              <HoldAndSlideIcon /> hold to preview · <TapIcon /> to focus · <PinchIcon /> to zoom
+              <HoldAndSlideIcon /> {t('hint.hold')} · <TapIcon /> {t('hint.focus')} · <PinchIcon />{' '}
+              {t('hint.zoom')}
             </>
           ),
         }}

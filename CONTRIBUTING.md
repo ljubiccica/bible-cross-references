@@ -41,11 +41,32 @@ verse of a chapter given without one')`, not `it('calls indexOf')`.
   build refuses a file that does not match. Changing a source means re-pinning deliberately, with
   `npm run data:fetch -- --update`, and saying in the pull request what changed upstream.
 
+## Translations
+
+Two different jobs, and they are independent:
+
+- **A language for the interface** — `src/i18n/`. Add the tag to `LOCALE_IDS` and the compiler
+  lists every file that needs an entry. Leaving a message out is allowed; it falls back to
+  English, and a test reports the gap.
+- **A Bible text** — a pinned source, a manifest and an importer entry. The one hard requirement
+  is verse numbering: the app indexes every verse by its position in the KJV's 31,102, so a
+  translation that numbers verses differently needs a mapping before it can be added. The
+  importer refuses a file that does not line up rather than silently showing the wrong verse, so
+  this fails loudly at build time, not quietly in front of a reader.
+
+A new language should come with its layout checked, not only its words: translated text is often
+longer than English, and the header and footer are tight at 320px. `npm run test:e2e` walks twelve
+widths and insists the footer stays on one line with a font a tenth wider than the one it is
+measured on.
+
 ## Data and licences
 
-The datasets are built from CC BY 4.0 sources (OpenBible.info, STEP Bible / Tyndale House) and
-public-domain texts. Every dataset carries its own licence and attribution fields, and the app
-shows them in the footer and beside the words. If you add a source, it has to carry the same, and
+The datasets are built from CC BY sources (OpenBible.info and STEP Bible / Tyndale House under
+CC BY 4.0, Bíblia Livre under CC BY 3.0 BR) and public-domain texts. Every dataset carries its own
+licence and attribution fields, because each is served on its own and kept on readers' devices by
+the offline cache; the app shows them in the footer, in the translation picker and beside the
+words. A credit under a licence names that licence, with a link to it, wherever the text is
+shown — a public-domain one may give way on a narrow screen, a licensed one may not. If you add a source, it has to carry the same, and
 columns whose licence does not permit redistribution must not be read — `scripts/data/importers/`
 has a worked example, with a test that guards it.
 

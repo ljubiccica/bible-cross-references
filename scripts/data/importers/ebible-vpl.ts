@@ -1,6 +1,7 @@
 import { BOOKS, type BookId } from '../../../src/core/bible/books.ts';
 import { toOsisId, type VerseIndex } from '../../../src/core/bible/verse-ref.ts';
 import { CANONICAL_VERSIFICATION } from '../../../src/core/bible/versification.ts';
+import { getTranslationManifest } from '../../../src/translations/registry.ts';
 import {
   DATASET_SCHEMA_VERSION,
   type DatasetProvenance,
@@ -99,17 +100,27 @@ const BOOK_IDS_BY_CODE: ReadonlyMap<string, BookId> = new Map(
 const VERSE_LINE_PATTERN = /^(\S+) (\d+):(\d+) ?(.*)$/;
 
 /**
- * Typographic marks these editions carry, which the app has no place for: pilcrows start a
- * paragraph, and square brackets mark words the translators supplied (the KJV's italics). The
- * wording is left exactly as it is; only the marks go.
+ * Pilcrows start a paragraph in these editions and the app has no place for them, so they go.
+ *
+ * Square brackets stay. They are not typography: they mark words the translators supplied rather
+ * than found in the Greek or Hebrew — the convention printed Bibles set in italics, and in the
+ * source they are an explicit `\added` element. Dropping them would present a translator's own
+ * additions as original text, in 45.8% of the KJV and 15.6% of the Bíblia Livre, so every copy
+ * this build distributes keeps them exactly where the translators put them.
  */
 function cleanVerseText(text: string): string {
-  return text
-    .replace(/¶\s*/g, '')
-    .replaceAll('[', '')
-    .replaceAll(']', '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    text
+      .replace(/¶\s*/g, '')
+      // Colon spacing. Some editions set a psalm's superscription against its first words with no
+      // space at all, and others leave the space on the wrong side of the colon. Both read as
+      // mistakes, and neither is about the wording: the colon keeps its place, only the space
+      // moves. Letters only, so `:)` — which the KJV uses forty times — is left exactly as it is.
+      .replace(/\s+:/g, ': ')
+      .replace(/:(?=\p{L})/gu, ': ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 export function importEbibleVerseLines(
@@ -117,6 +128,8 @@ export function importEbibleVerseLines(
   translationId: TranslationId,
   provenance: DatasetProvenance,
 ): TranslationTextFile {
+  // The credit travels in the file: it is served on its own and kept on readers' devices.
+  const manifest = getTranslationManifest(translationId);
   const versification = CANONICAL_VERSIFICATION;
   const verses = new Array<string | undefined>(versification.verseCount).fill(undefined);
 
@@ -176,6 +189,8 @@ export function importEbibleVerseLines(
     schemaVersion: DATASET_SCHEMA_VERSION,
     versification: versification.id,
     provenance,
+    license: manifest.license,
+    attribution: manifest.attribution,
     notices:
       omitted.length > 0
         ? [

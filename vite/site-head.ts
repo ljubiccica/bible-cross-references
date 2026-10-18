@@ -1,5 +1,8 @@
 import type { HtmlTagDescriptor, Plugin } from 'vite';
-import { vizDatasetPaths } from '../src/visualizations/shared/viz-datasets.ts';
+import { defaultTranslationFor } from '../src/translations/default-for-locale.ts';
+import { crossReferencesDatasetPath, translationDatasetPath } from '../src/core/datasets/paths.ts';
+import { DEFAULT_LOCALE_ID, LOCALE_IDS } from '../src/i18n/locale-id.ts';
+import { vizCrossReferenceSource } from '../src/visualizations/shared/viz-datasets.ts';
 import {
   atEndOfHead,
   AUTHOR,
@@ -33,13 +36,41 @@ export function siteHead(): Plugin {
       // The datasets start downloading with the page instead of after the scripts have run. Not
       // when the offline cache serves the page: it has them already, and Chrome can't hand a
       // preload over to the app's own request through a service worker (it would read them twice).
-      const datasets = JSON.stringify(vizDatasetPaths().map((path) => `${base}${path}`));
+      //
+      // Which Bible to preload depends on the reader's language, and the language is only known
+      // here, in the browser: the HTML is one file for everybody. Guessing wrong is expensive —
+      // preloading the English text for a Portuguese reader downloads about 3.8 MB they will
+      // never read, on top of the 3.8 MB they will. So this picks the same way `main.tsx` does,
+      // and both must keep agreeing: the address, then the stored choice, then the browser.
+      const shared = JSON.stringify(
+        `${base}${crossReferencesDatasetPath(vizCrossReferenceSource().id)}`,
+      );
+      const byLocale = JSON.stringify(
+        Object.fromEntries(
+          LOCALE_IDS.map((id) => [
+            id,
+            `${base}${translationDatasetPath(defaultTranslationFor(id))}`,
+          ]),
+        ),
+      );
       tags.push({
         tag: 'script',
         children:
-          `if (!navigator.serviceWorker?.controller) for (const href of ${datasets}) {` +
-          " const link = document.createElement('link'); link.rel = 'preload'; link.as = 'fetch';" +
-          " link.crossOrigin = 'anonymous'; link.href = href; document.head.append(link); }",
+          'if (!navigator.serviceWorker?.controller) {' +
+          `  const byLocale = ${byLocale};` +
+          '  let lang = new URL(location.href).searchParams.get("lang");' +
+          '  if (!lang || !(lang in byLocale)) {' +
+          '    try { lang = localStorage.getItem("bible-cross-references:locale"); } catch { lang = null; }' +
+          '  }' +
+          '  if (!lang || !(lang in byLocale)) {' +
+          '    lang = (navigator.languages || []).map((tag) => tag.split("-")[0]).find((tag) => tag in byLocale) ?? null;' +
+          '  }' +
+          `  const hrefs = [${shared}, byLocale[lang] ?? byLocale[${JSON.stringify(DEFAULT_LOCALE_ID)}]];` +
+          '  for (const href of hrefs) {' +
+          '    const link = document.createElement("link"); link.rel = "preload"; link.as = "fetch";' +
+          '    link.crossOrigin = "anonymous"; link.href = href; document.head.append(link);' +
+          '  }' +
+          '}',
       });
       const page = pageOf(context.path);
       if (!page?.listed) {

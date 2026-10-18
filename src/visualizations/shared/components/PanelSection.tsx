@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { formatInteger } from '../../../shared/lib/format.ts';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import { useBooleanPreference } from '../../../shared/lib/preferences.ts';
 import { ExpandIcon, type IconComponent } from '../../../shared/ui/icons.tsx';
 import styles from './PassagePanel.module.css';
@@ -42,6 +42,7 @@ export function PanelSection({
   readonly defaultOpen?: boolean;
   readonly children: ReactNode;
 }) {
+  const { t, n } = useLocalization();
   const [open, setOpen] = useBooleanPreference(`panel:${id}`, defaultOpen);
   const bodyId = useId();
   return (
@@ -62,8 +63,8 @@ export function PanelSection({
           {trailing}
           {count !== undefined && (
             <span className={styles.count}>
-              {formatInteger(count)}
-              <span className={styles.visuallyHidden}> {countLabel ?? 'items'}</span>
+              {n(count)}
+              <span className={styles.visuallyHidden}> {countLabel ?? t('panel.items')}</span>
             </span>
           )}
           <ExpandIcon className={styles.chevron} />

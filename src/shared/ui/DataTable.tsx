@@ -21,7 +21,7 @@ export function DataTable<Row>({
   columns,
   rows,
   rowKey,
-  emptyMessage = 'Nothing to show.',
+  emptyMessage = 'Nothing to show.', // The debug page only; it stays in English.
 }: DataTableProps<Row>) {
   const alignment = (column: DataTableColumn<Row>) =>
     column.align === 'end' ? styles.end : undefined;

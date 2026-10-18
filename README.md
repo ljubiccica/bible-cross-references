@@ -94,6 +94,50 @@ iPhone or iPad that first visit has to happen inside the installed app: a home-s
 storage of its own, apart from Safari's. On Android and the desktop the two share it, so the visit
 that installed the app has already done the work.
 
+## Languages
+
+The app speaks English and Portuguese. Which it speaks is settled in this order: the address
+(`?lang=pt`), then the reader's last choice, then what their browser asks for, then English. On a
+first visit the Bible follows the interface — a browser asking for Portuguese arrives at the
+Bíblia Livre without being asked — and after that the two are independent, so a Portuguese
+interface can read an English text, or the other way round. Both are chosen in one menu, because
+the header has no room for a sixth button.
+
+Everything the interface says lives in [`src/i18n/`](src/i18n/):
+
+```text
+src/i18n/messages/   every word the interface says; en.ts is the source of truth
+src/i18n/books/      the 66 book names, their short forms and what a reader may type
+src/i18n/genres/     the ten genre names
+src/i18n/install/    the install steps, which are rich text and name real browser buttons
+```
+
+English is written `as const`, and `Messages` is derived from it, so a locale that misspells a key
+or gives a value the wrong shape does not compile. A locale may leave a key out — the English word
+is used instead, so a half-finished translation still ships something useful — and a test reports
+what is missing. Messages that take values are small functions rather than strings with
+placeholders: the compiler then checks the arguments, and each language can order its words and
+count its plurals its own way (`Intl.PluralRules` is in the platform for the languages that need
+three or more forms).
+
+Book names are matched on what was typed before accents are folded away, because in Portuguese
+the accent is the whole difference between two books: `Jo` is the usual abbreviation for João and
+`Jó` is Job. Typing without accents still works everywhere it is unambiguous — `genesis` finds
+Gênesis, `josue` finds Josué.
+
+**To add a language:** add its tag to `LOCALE_IDS` in `src/i18n/locale-id.ts`, and the compiler
+will name every file that needs an entry. The Bible text is a separate job — see
+[Data](#data) — and neither waits on the other: a language can have an interface with no Bible of
+its own, which is the right answer where no translation can be licensed.
+
+Some things stay in English whatever the reader's language. The `/debug/` page is one, because
+it is for whoever is working on the data. The rest come from the page being static HTML with one
+copy per view: the installed app's name, which a web manifest has only one of, and everything a
+reader never sees but a crawler does — the `<meta name="description">`, `og:locale`, the
+structured data's `inLanguage`, and the `<noscript>` text. A Portuguese link shared on a social
+network therefore previews in English, even though the page itself opens in Portuguese. The
+`lang` attribute and the document title are both corrected before the first paint.
+
 ## Data
 
 The app is built on openly licensed datasets only:
@@ -102,6 +146,7 @@ The app is built on openly licensed datasets only:
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | Bible text       | [Berean Standard Bible](https://berean.bible/) (BSB), the default                                                                     | [Public domain](https://berean.bible/terms.htm)                                                |
 | Bible text       | [King James Version](https://ebible.org/Scriptures/details.php?id=eng-kjv2006) (KJV), the 1769 text, from eBible.org                  | [Public domain](https://ebible.org/Scriptures/details.php?id=eng-kjv2006) (see the note below) |
+| Bible text       | [Bíblia Livre](https://sites.google.com/site/biblialivre/) (BLIVRE), Brazilian Portuguese, Textus Receptus edition                    | [CC BY 3.0 BR](https://creativecommons.org/licenses/by/3.0/br/)                                |
 | Cross-references | [OpenBible.info](https://www.openbible.info/labs/cross-references/), largely from the public-domain _Treasury of Scripture Knowledge_ | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                      |
 | Original words   | [STEPBible](https://github.com/STEPBible/STEPBible-Data) (TAHOT, TAGNT and their lexicons), from Tyndale House, Cambridge             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                      |
 
@@ -110,6 +155,11 @@ United Kingdom rights in the Authorized Version are vested in the Crown and admi
 Crown's patentee, Cambridge University Press, under letters patent that do not expire. The app
 says so where the translation is chosen. It is offered alongside the BSB, never instead of it, and
 its text is only downloaded for readers who ask for it.
+
+A note on the Bíblia Livre: it is an independent volunteer translation, updated from João Ferreira
+de Almeida's, and the edition used here follows the Textus Receptus — the same textual basis as the
+KJV, which is why it fits the app's verse numbering exactly, all 31,102 of them, with nothing
+dropped or merged. Attribution and the edition's date are shown where the translation is chosen.
 
 A note on what the links mean: they are the _Treasury of Scripture Knowledge_'s cross-references,
 which connect passages by shared themes, words, people and events. OpenBible.info readers have
@@ -285,6 +335,10 @@ The code is released under the [MIT License](LICENSE). The data keeps its own li
 > Scripture text: King James Version (Authorized Version), the 1769 text, public domain in the
 > United States and most of the world; in the United Kingdom rights are vested in the Crown and
 > administered by the Crown's patentee, Cambridge University Press.
+> Scripture text: Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles,
+> fevereiro de 2018, <http://sites.google.com/site/biblialivre/>, licensed under CC BY 3.0 Brasil
+> (<http://creativecommons.org/licenses/by/3.0/br/>). Modified: the spacing around colons is
+> normalized in 270 verses, which moves whitespace only.
 > Original-language words: STEP Bible (CC BY 4.0), based on work at Tyndale House, Cambridge.
 > Modified: reduced to the dictionary forms used in each verse, keyed to KJV verse numbering,
 > with psalm superscriptions left out.

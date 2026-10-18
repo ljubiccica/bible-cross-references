@@ -40,6 +40,17 @@ const KJV = everyVerse((index) => {
 const CONTENT: Readonly<Record<string, string | Uint8Array>> = {
   bsb: `The Holy Bible, Berean Standard Bible\nVerse\tBerean Standard Bible\n${BSB}`,
   kjv: zipSync({ 'eng-kjv2006_vpl.txt': strToU8(KJV) }),
+  // Its own text, in its own entry: a builder that reached for the wrong archive, or the wrong
+  // name inside one, would otherwise pass by looking like the KJV's.
+  blivre: zipSync({
+    'bliv-tr_vpl.txt': strToU8(
+      everyVerse((index) => {
+        const ref = CANONICAL_VERSIFICATION.refAt(index);
+        const code = KJV_CODES[CANONICAL_VERSIFICATION.bookAt(index).ordinal] ?? 'GEN';
+        return `${code} ${String(ref.chapter)}:${String(ref.verse)} Versículo ${String(index)}.`;
+      }),
+    ),
+  }),
   openbible: zipSync({
     'cross_references.txt': strToU8(
       'From Verse\tTo Verse\tVotes\t# CC-BY 2026-01-01\nGen.1.1\tJohn.1.1\t5',
@@ -82,6 +93,7 @@ describe('DATASET_BUILDERS', () => {
     expect(DATASET_BUILDERS.map((builder) => builder.outputPath)).toEqual([
       'data/translations/bsb.json',
       'data/translations/kjv.json',
+      'data/translations/blivre.json',
       'data/cross-references/openbible.json',
       'data/words/stepbible.json',
     ]);

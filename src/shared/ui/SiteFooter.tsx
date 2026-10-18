@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLocalization } from '../../i18n/use-locale.tsx';
 import { SourceCodeIcon } from './icons.tsx';
 import { InstallLink } from './InstallGuide.tsx';
 import styles from './SiteFooter.module.css';
@@ -20,6 +21,7 @@ interface SiteFooterProps {
  * app, plus credits.
  */
 export function SiteFooter({ children, className }: SiteFooterProps) {
+  const { t } = useLocalization();
   return (
     <footer className={className ? `${styles.footer} ${className}` : styles.footer}>
       <span className={styles.owner}>
@@ -30,11 +32,11 @@ export function SiteFooter({ children, className }: SiteFooterProps) {
           href={REPOSITORY_URL}
           target="_blank"
           rel="noreferrer"
-          title="Source code on GitHub"
-          aria-label="Source code on GitHub"
+          title={t('footer.source')}
+          aria-label={t('footer.source')}
         >
           <SourceCodeIcon />
-          <span className={styles.sourceLabel}>GitHub</span>
+          <span className={styles.sourceLabel}>{t('footer.sourceLabel')}</span>
         </a>{' '}
         <InstallLink />
       </span>

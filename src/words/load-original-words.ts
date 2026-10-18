@@ -5,7 +5,7 @@ import {
   type ImportNotice,
 } from '../core/datasets/formats.ts';
 import { originalWordsDatasetPath } from '../core/datasets/paths.ts';
-import { fetchDataset, measure, type DatasetLoadReport } from '../shared/lib/fetch-dataset.ts';
+import { loadDataset, type DatasetLoadReport } from '../shared/lib/fetch-dataset.ts';
 import { OriginalWordIndex } from './original-words.ts';
 import type { WordSourceManifest } from './word-source-manifest.ts';
 
@@ -26,19 +26,21 @@ export interface LoadedOriginalWords {
 export async function loadOriginalWords(
   manifest: WordSourceManifest,
 ): Promise<LoadedOriginalWords> {
-  const { json, report } = await fetchDataset(originalWordsDatasetPath(manifest.id));
-  const { value: dataset, ms } = measure((): OriginalWordsDataset => {
-    const file = parseOriginalWordsFile(json, {
-      id: manifest.id,
-      versification: CANONICAL_VERSIFICATION.id,
-    });
-    return {
-      manifest,
-      provenance: file.provenance,
-      notices: file.notices,
-      maxVerses: file.maxVerses,
-      index: new OriginalWordIndex(file.words, CANONICAL_VERSIFICATION.verseCount),
-    };
-  });
-  return { dataset, report: { ...report, processMs: ms } };
+  const { value: dataset, report } = await loadDataset(
+    originalWordsDatasetPath(manifest.id),
+    (json): OriginalWordsDataset => {
+      const file = parseOriginalWordsFile(json, {
+        id: manifest.id,
+        versification: CANONICAL_VERSIFICATION.id,
+      });
+      return {
+        manifest,
+        provenance: file.provenance,
+        notices: file.notices,
+        maxVerses: file.maxVerses,
+        index: new OriginalWordIndex(file.words, CANONICAL_VERSIFICATION.verseCount),
+      };
+    },
+  );
+  return { dataset, report };
 }

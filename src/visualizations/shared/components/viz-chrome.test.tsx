@@ -85,33 +85,55 @@ describe('FiltersMenu', () => {
 
 describe('TranslationMenu', () => {
   it('names the translation being read', () => {
-    render(<TranslationMenu current={BSB} onChange={vi.fn()} />);
+    render(
+      <TranslationMenu current={BSB} onChange={vi.fn()} localeId="en" onLocaleChange={vi.fn()} />,
+    );
     expect(screen.getByRole('button', { name: /Translation/ }).textContent).toContain('BSB');
   });
 
   it('switches to another translation', async () => {
     const onChange = vi.fn();
-    render(<TranslationMenu current={BSB} onChange={onChange} />);
+    render(
+      <TranslationMenu current={BSB} onChange={onChange} localeId="en" onLocaleChange={vi.fn()} />,
+    );
     await openMenu(/Translation/);
     await userEvent.click(screen.getByRole('radio', { name: /King James/ }));
     expect(onChange).toHaveBeenCalledWith('kjv');
   });
 
   it('marks the one in use', async () => {
-    render(<TranslationMenu current={BSB} onChange={vi.fn()} />);
+    render(
+      <TranslationMenu current={BSB} onChange={vi.fn()} localeId="en" onLocaleChange={vi.fn()} />,
+    );
     await openMenu(/Translation/);
     expect(screen.getByRole('radio', { name: /Berean/ })).toHaveProperty('checked', true);
   });
 
   it('marks itself busy while a translation is still downloading', () => {
-    render(<TranslationMenu current={BSB} onChange={vi.fn()} pending />);
+    render(
+      <TranslationMenu
+        current={BSB}
+        onChange={vi.fn()}
+        pending
+        localeId="en"
+        onLocaleChange={vi.fn()}
+      />,
+    );
     expect(screen.getByRole('button', { name: /Translation/ }).getAttribute('aria-busy')).toBe(
       'true',
     );
   });
 
   it('shows why a translation could not be loaded', async () => {
-    render(<TranslationMenu current={BSB} onChange={vi.fn()} error="Network error" />);
+    render(
+      <TranslationMenu
+        current={BSB}
+        onChange={vi.fn()}
+        error="Network error"
+        localeId="en"
+        onLocaleChange={vi.fn()}
+      />,
+    );
     await openMenu(/Translation/);
     expect(screen.getByText(/Network error/)).toBeDefined();
   });

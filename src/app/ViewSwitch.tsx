@@ -1,4 +1,5 @@
 import controls from '../visualizations/shared/components/controls.module.css';
+import { useLocalization } from '../i18n/use-locale.tsx';
 import { InAppLink } from './InAppLink.tsx';
 import type { View, ViewId } from './views.ts';
 
@@ -12,23 +13,24 @@ interface ViewSwitchProps {
 
 /** The header's switch between the visualizations: links that keep the focused passage. */
 export function ViewSwitch({ views, current, hrefOf, onOpen }: ViewSwitchProps) {
+  const { t } = useLocalization();
   return (
-    <nav aria-label="Visualizations" className={controls.segmented}>
+    <nav aria-label={t('view.switch')} className={controls.segmented}>
       {views.map((view) => (
         <InAppLink
           key={view.id}
           href={hrefOf(view)}
           className={controls.button}
           // The full title names the link even where only the short one is visible.
-          aria-label={view.title}
+          aria-label={t(view.titleKey)}
           aria-current={view.id === current ? 'page' : undefined}
           onFollow={() => {
             onOpen(view);
           }}
         >
           <view.icon />
-          <span className={controls.longLabel}>{view.title}</span>
-          <span className={controls.shortLabel}>{view.shortTitle}</span>
+          <span className={controls.longLabel}>{t(view.titleKey)}</span>
+          <span className={controls.shortLabel}>{t(view.shortTitleKey)}</span>
         </InAppLink>
       ))}
     </nav>

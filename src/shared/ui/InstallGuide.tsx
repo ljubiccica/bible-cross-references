@@ -1,20 +1,12 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { currentInstallPlatform, type InstallPlatform } from '../lib/install-platform.ts';
 import {
   canPromptToInstall,
   promptToInstall,
   subscribeToInstallPrompt,
 } from '../lib/install-prompt.ts';
-import {
-  AddressBarInstallIcon,
-  AddToHomeScreenIcon,
-  BrowserMenuIcon,
-  CloseIcon,
-  DoneIcon,
-  InstallIcon,
-  ShareIcon,
-  type IconComponent,
-} from './icons.tsx';
+import { useLocalization } from '../../i18n/use-locale.tsx';
+import { CloseIcon, InstallIcon } from './icons.tsx';
 import styles from './InstallGuide.module.css';
 
 /**
@@ -36,113 +28,23 @@ let showGuide: (() => void) | null = null;
 
 /** The footer's entry point: see `InstallGuideDialog` for what it opens. */
 export function InstallLink() {
+  const { t } = useLocalization();
   return (
     <button
       type="button"
       className={styles.trigger}
       // Named here, not by the word beside the arrow: on phones the arrow stands on its own.
-      title="Install the app"
-      aria-label="Install the app"
+      title={t('install.link')}
+      aria-label={t('install.link')}
       onClick={() => {
         showGuide?.();
       }}
     >
       <InstallIcon />
-      <span className={styles.triggerLabel}>Install</span>
+      <span className={styles.triggerLabel}>{t('install.linkLabel')}</span>
     </button>
   );
 }
-
-interface Step {
-  /** The glyph of the button the step names, as that button wears it. */
-  readonly icon: IconComponent;
-  readonly text: ReactNode;
-}
-
-interface PlatformGuide {
-  /** The device's name, on the switch between the three sets of steps. */
-  readonly label: string;
-  readonly steps: readonly Step[];
-  /** What holds for the platform but not for the steps: another browser, another menu. */
-  readonly note?: ReactNode;
-}
-
-/** Every browser keeps this feature somewhere else; these are the three shapes of it. */
-const GUIDES: Record<InstallPlatform, PlatformGuide> = {
-  ios: {
-    label: 'iPhone',
-    steps: [
-      { icon: ShareIcon, text: <>Tap the share button in Safari&apos;s toolbar.</> },
-      {
-        icon: AddToHomeScreenIcon,
-        text: (
-          <>
-            Scroll down and choose <b>Add to Home Screen</b>.
-          </>
-        ),
-      },
-      {
-        icon: DoneIcon,
-        text: (
-          <>
-            Tap <b>Add</b>. The app joins the others on your home screen.
-          </>
-        ),
-      },
-    ],
-    note: (
-      <>
-        Safari always offers this. Chrome, Edge and Firefox on an iPhone or iPad share the same
-        menu, and offer it where they support it.
-      </>
-    ),
-  },
-  android: {
-    label: 'Android',
-    steps: [
-      { icon: BrowserMenuIcon, text: <>Open the menu in Chrome&apos;s toolbar.</> },
-      {
-        icon: AddToHomeScreenIcon,
-        text: (
-          <>
-            Choose <b>Install app</b>, or <b>Add to Home screen</b>.
-          </>
-        ),
-      },
-      {
-        icon: DoneIcon,
-        text: (
-          <>
-            Confirm <b>Install</b>.
-          </>
-        ),
-      },
-    ],
-  },
-  desktop: {
-    label: 'Desktop',
-    steps: [
-      {
-        icon: AddressBarInstallIcon,
-        text: <>In Chrome or Edge, click the install button at the end of the address bar.</>,
-      },
-      {
-        icon: DoneIcon,
-        text: (
-          <>
-            Choose <b>Install</b>. The app opens in a window of its own.
-          </>
-        ),
-      },
-    ],
-    note: (
-      <>
-        Safari on a Mac installs from <b>Share → Add to Dock</b>. Firefox installs no web apps, but
-        the site still works offline there once you have opened it.
-      </>
-    ),
-  },
-};
 
 const PLATFORMS: readonly InstallPlatform[] = ['ios', 'android', 'desktop'];
 
@@ -152,12 +54,13 @@ const PLATFORMS: readonly InstallPlatform[] = ['ios', 'android', 'desktop'];
  * the page is being displayed), and from the address this page ends in `#install`.
  */
 export function InstallGuideDialog() {
+  const { t, install } = useLocalization();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [platform, setPlatform] = useState<InstallPlatform>(DEVICE);
   // Chromium can do the whole thing itself where it has offered to; everywhere else the steps are
   // all there is. The offer can arrive after this has rendered, and is spent once it is taken.
   const canPrompt = useSyncExternalStore(subscribeToInstallPrompt, canPromptToInstall, () => false);
-  const guide = GUIDES[platform];
+  const guide = install[platform];
 
   useEffect(() => {
     const open = () => {
@@ -215,12 +118,12 @@ export function InstallGuideDialog() {
       <div className={styles.card}>
         <div className={styles.head}>
           <h2 id="install-guide-title" className={styles.title}>
-            Install the app
+            {t('install.title')}
           </h2>
           <button
             type="button"
             className={styles.close}
-            aria-label="Close"
+            aria-label={t('install.close')}
             onClick={() => {
               dialogRef.current?.close();
             }}
@@ -228,9 +131,7 @@ export function InstallGuideDialog() {
             <CloseIcon />
           </button>
         </div>
-        <p className={styles.lede}>
-          Keep it on your home screen and read it with no connection. No app store, no account.
-        </p>
+        <p className={styles.lede}>{t('install.lede')}</p>
         {canPrompt && (
           <button
             type="button"
@@ -240,10 +141,10 @@ export function InstallGuideDialog() {
             }}
           >
             <InstallIcon />
-            Install now
+            {t('install.now')}
           </button>
         )}
-        <div className={styles.tabs} role="group" aria-label="Device">
+        <div className={styles.tabs} role="group" aria-label={t('install.device')}>
           {PLATFORMS.map((option) => (
             <button
               key={option}
@@ -254,7 +155,7 @@ export function InstallGuideDialog() {
                 setPlatform(option);
               }}
             >
-              {GUIDES[option].label}
+              {install[option].label}
             </button>
           ))}
         </div>
@@ -269,10 +170,7 @@ export function InstallGuideDialog() {
           ))}
         </ol>
         {guide.note !== undefined && <p className={styles.note}>{guide.note}</p>}
-        <p className={styles.note}>
-          Open the app once while you are online: that is when it stores the Bible text and the
-          cross-references on your device.
-        </p>
+        <p className={styles.note}>{t('install.whileOnline')}</p>
       </div>
     </dialog>
   );

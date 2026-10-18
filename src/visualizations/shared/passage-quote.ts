@@ -1,5 +1,6 @@
 import { formatVerseIndexRange } from '../../core/bible/reference-format.ts';
 import type { VerseIndex } from '../../core/bible/verse-ref.ts';
+import type { BookNames } from '../../i18n/books/types.ts';
 import type { Versification } from '../../core/bible/versification.ts';
 import type { Translation } from '../../translations/translation.ts';
 
@@ -35,12 +36,14 @@ function escapeHtml(text: string): string {
 export function quotePassage({
   translation,
   versification,
+  names,
   start,
   end,
   url,
 }: {
   readonly translation: Translation;
   readonly versification: Versification;
+  readonly names: BookNames;
   readonly start: VerseIndex;
   readonly end: VerseIndex;
   readonly url: string;
@@ -61,7 +64,7 @@ export function quotePassage({
           : `${String(ref.chapter)}:${String(ref.verse)}`;
     verses.push({ mark, text });
   }
-  const reference = formatVerseIndexRange(versification, start, end);
+  const reference = formatVerseIndexRange(versification, names, start, end);
   const { abbreviation } = translation.manifest;
   const text = verses.map(({ mark, text }) => (mark ? superscript(mark) : '') + text).join(' ');
   const html = verses

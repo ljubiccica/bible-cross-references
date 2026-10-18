@@ -1,6 +1,6 @@
-import { formatBytes, sha256Hex, writeFileAtomic } from './files.ts';
+import { formatBytes, writeFileAtomic } from './files.ts';
 import { rawFilePath } from './paths.ts';
-import type { RawSource } from './sources.ts';
+import { pinnedDigest, type RawSource } from './sources.ts';
 
 /** Downloads a URL into memory. */
 export async function download(url: string): Promise<Buffer> {
@@ -20,7 +20,7 @@ export async function download(url: string): Promise<Buffer> {
  */
 export async function downloadPinnedSource(source: RawSource): Promise<Buffer> {
   const content = await download(source.url);
-  const sha256 = sha256Hex(content);
+  const sha256 = pinnedDigest(source, content);
   if (sha256 !== source.sha256) {
     throw new Error(
       `${source.id}: the upstream file changed (expected SHA-256 ${source.sha256}, got ${sha256}).\n` +

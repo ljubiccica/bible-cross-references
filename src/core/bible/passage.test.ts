@@ -11,6 +11,7 @@ import {
   type Passage,
 } from './passage.ts';
 import { KJV_VERSIFICATION as kjv } from './versification.ts';
+import { enBooks } from '../../i18n/books/en.ts';
 
 const JOHN_3_16 = kjv.indexOf({ book: 'John', chapter: 3, verse: 16 }) ?? -1;
 const ISAIAH_53: Passage = { kind: 'chapter', book: 'Isa', chapter: 53 };
@@ -27,8 +28,10 @@ describe('passages', () => {
   });
 
   it('formats and round-trips OSIS IDs', () => {
-    expect(formatPassage(versePassage(JOHN_3_16), kjv)).toBe('John 3:16');
-    expect(formatPassage({ kind: 'chapter', book: 'Ps', chapter: 23 }, kjv)).toBe('Psalm 23');
+    expect(formatPassage(versePassage(JOHN_3_16), kjv, enBooks)).toBe('John 3:16');
+    expect(formatPassage({ kind: 'chapter', book: 'Ps', chapter: 23 }, kjv, enBooks)).toBe(
+      'Psalm 23',
+    );
     expect(toPassageOsisId(ISAIAH_53, kjv)).toBe('Isa.53');
     expect(parsePassageOsisId('Isa.53', kjv)).toEqual(ISAIAH_53);
     expect(parsePassageOsisId('John.3.16', kjv)).toEqual(versePassage(JOHN_3_16));

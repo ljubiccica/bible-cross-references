@@ -30,11 +30,16 @@ export function isDefaultFilter(filter: LinkFilter, defaults: LinkFilter): boole
   return filter.minVotes === defaults.minVotes && filter.hiddenGenres.size === 0;
 }
 
-export function describeThreshold(minVotes: number): string {
+export type ThresholdDescription =
+  | { readonly kind: 'all' }
+  | { readonly kind: 'no-downvoted' }
+  | { readonly kind: 'at-least'; readonly votes: number };
+
+export function describeThreshold(minVotes: number): ThresholdDescription {
   if (minVotes === -Infinity) {
-    return 'all links';
+    return { kind: 'all' };
   }
-  return minVotes === 0 ? 'links voted down are hidden' : `≥ ${minVotes} votes`;
+  return minVotes === 0 ? { kind: 'no-downvoted' } : { kind: 'at-least', votes: minVotes };
 }
 
 /**

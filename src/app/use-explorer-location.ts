@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Versification } from '../core/bible/versification.ts';
 import type { TranslationId } from '../core/datasets/ids.ts';
+import type { LocaleId } from '../i18n/locale-id.ts';
 import {
   explorerUrl,
   parseExplorerUrl,
@@ -23,6 +24,7 @@ export function useExplorerLocation<Id extends string>(
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
   defaultTranslation: TranslationId,
+  defaultLocale: LocaleId,
 ): readonly [
   ExplorerLocation<Id>,
   (next: ExplorerLocation<Id>, options?: NavigateOptions) => void,
@@ -35,8 +37,9 @@ export function useExplorerLocation<Id extends string>(
         routes,
         versification,
         defaultTranslation,
+        defaultLocale,
       ),
-    [routes, versification, defaultTranslation],
+    [routes, versification, defaultTranslation, defaultLocale],
   );
   const [location, setLocation] = useState(read);
 

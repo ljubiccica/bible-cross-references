@@ -15,10 +15,21 @@
       "description": "King James Version, eBible.org edition, verse-per-line text in a ZIP archive",
       "url": "https://ebible.org/Scriptures/eng-kjv2006_vpl.zip",
       "fileName": "eng-kjv2006_vpl.zip",
-      "sha256": "0058f0cca3a9609f14e435ebbb3c3165c84571de8fbd3d6d7181da8d2d0700ea",
+      "sha256": "68c5f764bf1c204868c3eb72592035c0947f057b608c2149dbff765d8ddd86f6",
+      "member": "eng-kjv2006_vpl.txt",
       "retrievedAt": "2026-10-17",
       "license": "Public domain (United Kingdom: Crown copyright)",
       "homepage": "https://ebible.org/Scriptures/details.php?id=eng-kjv2006"
+    },
+    {
+      "id": "blivre",
+      "description": "Bíblia Livre (Textus Receptus edition), verse-per-line text in a ZIP archive",
+      "url": "https://github.com/blivre/BibliaLivre/releases/download/2018.2.0/bliv-tr_vpl.zip",
+      "fileName": "bliv-tr_vpl.zip",
+      "sha256": "af8d9876919c4ca67195b8d8adcb9998a63f25ea4509750574ab6a7eedb9e2f1",
+      "retrievedAt": "2026-10-18",
+      "license": "CC BY 3.0 BR",
+      "homepage": "https://sites.google.com/site/biblialivre/"
     },
     {
       "id": "openbible",

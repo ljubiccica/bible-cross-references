@@ -67,3 +67,54 @@ export function measure<T>(step: () => T): { readonly value: T; readonly ms: num
   const value = step();
   return { value, ms: performance.now() - start };
 }
+
+/**
+ * Drops a dataset from every offline cache that holds it, so the next fetch goes to the network.
+ *
+ * Only called for a file that failed validation, which is a file the app cannot use: losing it
+ * costs nothing, and keeping it would mean the reader meets the same error on every visit.
+ */
+async function evictCachedDataset(url: string): Promise<void> {
+  if (!('caches' in globalThis)) {
+    return;
+  }
+  try {
+    const names = await caches.keys();
+    await Promise.all(
+      names.map(async (name) => {
+        await (await caches.open(name)).delete(url);
+      }),
+    );
+  } catch {
+    // A browser that refuses cache access (private mode, a disabled storage API) still gets the
+    // network retry; there is simply nothing to evict first.
+  }
+}
+
+/**
+ * Fetches a dataset and validates it, healing a copy an earlier release left in the offline cache.
+ *
+ * Datasets live at URLs with no content hash and the offline cache keeps them across releases, so
+ * the first load after a deployment validates the *previous* release's file. If this release ever
+ * stops accepting that file, the stale copy is evicted and fetched again before the reader is told
+ * anything is wrong. Without this, a schema change costs every installed reader a broken load, and
+ * a reader who never comes back online would never recover at all.
+ */
+export async function loadDataset<T>(
+  path: string,
+  parse: (json: unknown) => T,
+): Promise<{ readonly value: T; readonly report: DatasetLoadReport }> {
+  const fetched = await fetchDataset(path);
+  try {
+    const { value, ms } = measure(() => parse(fetched.json));
+    return { value, report: { ...fetched.report, processMs: ms } };
+  } catch (error) {
+    if (error instanceof DatasetUnavailableError) {
+      throw error;
+    }
+    await evictCachedDataset(fetched.report.url);
+    const fresh = await fetchDataset(path);
+    const { value, ms } = measure(() => parse(fresh.json));
+    return { value, report: { ...fresh.report, processMs: ms } };
+  }
+}

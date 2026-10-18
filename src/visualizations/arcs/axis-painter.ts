@@ -1,6 +1,8 @@
 import { BOOKS } from '../../core/bible/books.ts';
 import { GENRES, getBookGenre, getGenreBooks } from '../../core/bible/genres.ts';
+import type { GenreId } from '../../core/bible/genres.ts';
 import type { VerseIndexRange, Versification } from '../../core/bible/versification.ts';
+import type { BookNames } from '../../i18n/books/types.ts';
 import { elementAt } from '../../core/lib/array.ts';
 import { GENRE_HEX } from '../shared/palette.ts';
 import { verseToAlong, type ArcLayout } from './arc-layout.ts';
@@ -10,6 +12,9 @@ export interface AxisPaint {
   readonly layout: ArcLayout;
   readonly view: AxisView;
   readonly versification: Versification;
+  /** Book and genre names in the reader's language: the axis is read, not only looked at. */
+  readonly names: BookNames;
+  readonly genreNames: Readonly<Record<GenreId, string>>;
   readonly focus: VerseIndexRange | null;
   readonly hover: VerseIndexRange | null;
   /** A passage a previewed link points to: a band quieter than hover's, under the focus. */
@@ -119,7 +124,7 @@ export function paintAxis(context: CanvasRenderingContext2D, paint: AxisPaint): 
 
 function paintBookLabels(
   context: CanvasRenderingContext2D,
-  { layout, versification, focus, hover, passage }: AxisPaint,
+  { layout, versification, names, focus, hover, passage }: AxisPaint,
   along: (verse: number) => number,
 ): void {
   const horizontal = layout.orientation === 'horizontal';
@@ -138,7 +143,8 @@ function paintBookLabels(
     const to = Math.min(along(range.end + 1), layout.axisEnd);
     const room = to - from;
     if (room <= 0) continue;
-    const candidates = [book.name, book.id];
+    const short = names[book.id].abbreviation ?? book.id;
+    const candidates = [names[book.id].name, short];
     const label = horizontal
       ? candidates.find((text) => context.measureText(text).width + 8 <= room)
       : room >= 12
@@ -161,7 +167,7 @@ function paintBookLabels(
 
 function paintGenreLabels(
   context: CanvasRenderingContext2D,
-  { layout, versification }: AxisPaint,
+  { layout, versification, genreNames }: AxisPaint,
   along: (verse: number) => number,
 ): void {
   context.font = GENRE_FONT;
@@ -174,7 +180,7 @@ function paintGenreLabels(
     if (!first || !last) continue;
     const from = Math.max(along(versification.bookRange(first).start), layout.axisStart);
     const to = Math.min(along(versification.bookRange(last).end + 1), layout.axisEnd);
-    const label = genre.name.toUpperCase();
+    const label = genreNames[genre.id].toUpperCase();
     if (to - from < context.measureText(label).width + 16) continue;
     const center = (from + to) / 2;
     const textWidth = context.measureText(label).width;

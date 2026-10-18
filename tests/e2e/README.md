@@ -58,6 +58,21 @@ Run them with `npm run test:e2e` (once: `npx playwright install --with-deps chro
 | …with the filter it names                           | `cross-references.spec.ts` |
 | Back returns to the passage before it               | `reading.spec.ts`          |
 
+## Languages
+
+| Flow                                                                | Covered by          |
+| ------------------------------------------------------------------- | ------------------- |
+| A link naming a language opens the app in it, `<html lang>` and all | `languages.spec.ts` |
+| A Portuguese browser gets a Portuguese interface _and_ Bible        | `languages.spec.ts` |
+| The verses and the book names are Portuguese                        | `languages.spec.ts` |
+| A reference can be typed in Portuguese, with accents or without     | `languages.spec.ts` |
+| A reference it cannot read says so in Portuguese                    | `languages.spec.ts` |
+| Counts are written the way a Brazilian writes them                  | `languages.spec.ts` |
+| The picker groups translations under their language                 | `languages.spec.ts` |
+| The interface language is chosen there too, and remembered          | `languages.spec.ts` |
+| Changing the text leaves the interface language alone               | `languages.spec.ts` |
+| A shared link carries both the text and the language                | `languages.spec.ts` |
+
 ## Installing and reading offline
 
 | Flow                                                            | Covered by        |
@@ -99,26 +114,52 @@ not. Pictures are a separate suite — below.
 (Pixel 7), and writes them to `tests/e2e/visual.spec.ts-snapshots/`. Open that folder to see what
 the app currently looks like; a change to one of those files in a diff is a change to the app.
 
-| Screen                                       | File               |
-| -------------------------------------------- | ------------------ |
-| Arcs, as the app opens                       | `arcs-home`        |
-| Arcs, with the genre legend unfolded (phone) | `arcs-genres`      |
-| Threads, as the view opens                   | `threads-home`     |
-| A verse and its cross-references             | `verse-panel`      |
-| A whole chapter                              | `chapter-panel`    |
-| The same verse in Threads                    | `threads-verse`    |
-| The details panel on its own                 | `panel-only`       |
-| …in another translation                      | `panel-kjv`        |
-| A Greek verse and its words                  | `words-greek`      |
-| A word opened to every verse that uses it    | `words-expanded`   |
-| A Hebrew verse, right to left                | `words-hebrew`     |
-| The filters menu                             | `menu-filters`     |
-| The translations menu                        | `menu-translation` |
-| A reference that is not one                  | `search-error`     |
-| The install guide                            | `install-guide`    |
-| The loading screen                           | `loading`          |
-| The error screen                             | `load-error`       |
-| The debug dashboard                          | `debug`            |
+| Screen                                         | File                           |
+| ---------------------------------------------- | ------------------------------ |
+| **The canvas**                                 |                                |
+| Arcs, as the app opens                         | `arcs-home`                    |
+| Arcs, zoomed in on a part of the canvas        | `arcs-zoomed`                  |
+| Arcs, a chapter picked out                     | `arcs-chapter`                 |
+| Arcs, a verse picked out                       | `arcs-verse`                   |
+| Arcs, with whole genres hidden                 | `arcs-genres-hidden`           |
+| Arcs, with every link shown                    | `arcs-all-links`               |
+| Arcs, with the genre legend unfolded           | `arcs-legend`, `arcs-genres`   |
+| Threads, as the view opens                     | `threads-home`                 |
+| Threads, on a verse                            | `threads-verse`                |
+| Threads, on a chapter                          | `threads-chapter`              |
+| **The details panel**                          |                                |
+| A verse and its cross-references               | `verse-panel`                  |
+| A whole chapter                                | `chapter-panel`                |
+| The panel on its own                           | `panel-only`                   |
+| …a chapter, with its verse list                | `panel-chapter-only`           |
+| …in another translation                        | `panel-kjv`                    |
+| …with every section folded away                | `panel-collapsed`              |
+| …with every cross-reference shown              | `panel-show-all`               |
+| …just after a reference was copied             | `panel-copied`                 |
+| **The original languages**                     |                                |
+| A Greek verse and its words                    | `words-greek`                  |
+| A Hebrew verse, right to left                  | `words-hebrew`                 |
+| A Greek word opened to its verses              | `words-expanded`               |
+| A Hebrew word opened to its verses             | `words-hebrew-expanded`        |
+| The words folded away                          | `words-collapsed`              |
+| The two headings that stay put while scrolling | `words-sticky-headings`        |
+| …the same in Hebrew                            | `words-sticky-headings-hebrew` |
+| **The controls**                               |                                |
+| The filters menu                               | `menu-filters`                 |
+| …set to something other than its defaults      | `menu-filters-changed`         |
+| The genres menu (Threads)                      | `menu-genres`                  |
+| The translations menu                          | `menu-translation`             |
+| A reference that is not one                    | `search-error`                 |
+| **Everything else**                            |                                |
+| The install guide                              | `install-guide`                |
+| The loading screen                             | `loading`                      |
+| The error screen                               | `load-error`                   |
+| The debug dashboard                            | `debug`                        |
+| **In Portuguese**                              |                                |
+| The arcs                                       | `pt-arcs`                      |
+| A verse and its cross-references               | `pt-panel`                     |
+| The reading threads                            | `pt-threads`                   |
+| The picker, grouped by language                | `pt-menu-translation`          |
 
 Each file is suffixed with the project and platform (`-visual-phone-linux.png`), so baselines made
 on macOS and on Linux sit side by side rather than overwriting each other.

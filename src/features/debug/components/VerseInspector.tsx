@@ -1,6 +1,9 @@
 import { useState, type SubmitEvent } from 'react';
 import { formatVerseRef } from '../../../core/bible/reference-format.ts';
 import { parseReference } from '../../../core/bible/reference-parse.ts';
+import { enBooks } from '../../../i18n/books/en.ts';
+import { describeReferenceError } from '../../../i18n/describe-reference-error.ts';
+import { ENGLISH } from '../../../i18n/use-locale.tsx';
 import { toOsisId, type VerseIndex } from '../../../core/bible/verse-ref.ts';
 import type { CrossReferenceLink } from '../../../cross-references/cross-reference-index.ts';
 import type { CrossReferenceDataset } from '../../../cross-references/load-cross-references.ts';
@@ -40,9 +43,11 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const input = new FormData(event.currentTarget).get('reference');
-    const result = parseReference(typeof input === 'string' ? input : '', versification);
+    const result = parseReference(typeof input === 'string' ? input : '', versification, enBooks);
     if (!result.ok) {
-      setError(result.error);
+      // The page is for whoever is working on the data, so it stays in the language the code
+      // is written in — and the lookup above uses the English names, so the sentence must too.
+      setError(describeReferenceError(result.error, ENGLISH));
       return;
     }
     // A chapter-only reference opens the chapter's first verse.
@@ -89,7 +94,7 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
         <input
           name="reference"
           className={styles.input}
-          defaultValue={formatVerseRef(ref)}
+          defaultValue={formatVerseRef(ref, enBooks)}
           aria-label="Bible reference"
           autoComplete="off"
         />
@@ -127,7 +132,7 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
       )}
 
       <article className={styles.verseCard}>
-        <h3 className={styles.verseTitle}>{formatVerseRef(ref)}</h3>
+        <h3 className={styles.verseTitle}>{formatVerseRef(ref, enBooks)}</h3>
         <p className={styles.verseText}>
           {text || <em>Omitted in the {translation.manifest.abbreviation}.</em>}
         </p>

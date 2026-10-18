@@ -19,16 +19,27 @@ function notify(): void {
   }
 }
 
+function onStorage(): void {
+  memory.clear(); // Another tab changed a preference: read it again.
+  notify();
+}
+
+/**
+ * One window listener for all of them, attached with the first subscriber and dropped with the
+ * last. A listener each would be fine for a handful of components, but a preference read inside
+ * a list item is read hundreds of times over, and the event would then cost that many listeners
+ * each fanning out to that many again.
+ */
 function subscribe(listener: () => void): () => void {
-  const onStorage = () => {
-    memory.clear(); // Another tab changed a preference: read it again.
-    notify();
-  };
+  if (listeners.size === 0) {
+    window.addEventListener('storage', onStorage);
+  }
   listeners.add(listener);
-  window.addEventListener('storage', onStorage);
   return () => {
     listeners.delete(listener);
-    window.removeEventListener('storage', onStorage);
+    if (listeners.size === 0) {
+      window.removeEventListener('storage', onStorage);
+    }
   };
 }
 
@@ -57,6 +68,11 @@ function write(key: string, value: string): void {
 /** Reads a stored preference outside React, e.g. before the app renders. */
 export function readPreference(key: string): string | null {
   return read(key);
+}
+
+/** Writes one outside React, e.g. to settle the language before the first paint. */
+export function writePreference(key: string, value: string): void {
+  write(key, value);
 }
 
 /** A stored preference, `fallback` until the reader changes it. */

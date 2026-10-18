@@ -1,0 +1,182 @@
+import type { LocaleMessages } from './types.ts';
+
+/** The interface in Portuguese. Anything left out falls back to the English word. */
+export const pt: LocaleMessages = {
+  'app.name': 'Referências Cruzadas da Bíblia',
+  'app.name.short': 'Referências Cruzadas',
+
+  'view.arcs': 'Arcos',
+  'view.arcs.short': 'Arcos',
+  'view.arcs.open': 'Ver nos Arcos',
+  'view.threads': 'Fios',
+  'view.threads.short': 'Fios',
+  'view.threads.open': 'Ler no contexto',
+  'view.switch': 'Visualizações',
+
+  'search.label': 'Ir para uma referência bíblica',
+  'search.placeholder': 'Ir para…  João 3:16, Sl 23',
+
+  'reference.unreadable': 'Digite uma referência como “João 3:16” ou “Sl 23”.',
+  'reference.unknownBook': (query) => `Livro desconhecido “${query}”.`,
+  'reference.ambiguous': (query, candidates) => `“${query}” pode ser ${candidates}.`,
+  'reference.or': ' ou ',
+  'reference.chapters': (book, count) => `${book} tem ${count} capítulos.`,
+  'reference.verses': (reference, chapter, count) =>
+    `${reference} ${chapter} tem ${count} versículos.`,
+
+  // Plural and masculine, agreeing with "Filtros".
+  'menu.filtersChanged': 'Filtros (alterados)',
+  'menu.filters': 'Filtros',
+  'menu.filters.votes': 'Votos da comunidade',
+  'menu.filters.votes.all': 'Todos',
+  'menu.filters.votes.atLeast': (votes) => `≥ ${String(votes)}`,
+  'menu.filters.note': (shown, total, threshold, hidden) =>
+    `Os votos indicam o quanto os leitores do OpenBible.info acharam uma ligação útil; não ` +
+    `provam que ela esteja certa ou errada. Exibindo ${shown} de ${total} ligações ` +
+    `(${threshold}${hidden}).`,
+  'menu.filters.hiddenGenres': (count) =>
+    count === 1 ? ', 1 gênero oculto' : `, ${String(count)} gêneros ocultos`,
+  'filter.allLinks': 'todas as ligações',
+  'filter.noDownvoted': 'ligações com votos negativos ficam ocultas',
+  'filter.atLeastVotes': (votes, plural) => (plural === 1 ? `≥ ${votes} voto` : `≥ ${votes} votos`),
+  'menu.filters.tip': 'Dica: toque num gênero na legenda para ocultá-lo ou exibi-lo.',
+  'menu.filters.reset': 'Restaurar filtros',
+
+  'attribution.bsb': 'Texto bíblico: Berean Standard Bible (BSB), dedicada ao domínio público.',
+  'attribution.kjv':
+    'Texto bíblico: King James Version (Authorized Version), texto de 1769. Em domínio público ' +
+    'nos Estados Unidos e na maior parte do mundo; no Reino Unido os direitos pertencem à Coroa ' +
+    'e são administrados pela Cambridge University Press.',
+  'attribution.blivre':
+    'Texto bíblico: Bíblia Livre (BLIVRE), © Diego Santos, Mario Sérgio e Marco Teles, ' +
+    'fevereiro de 2018 (edição Textus Receptus), https://sites.google.com/site/biblialivre/. ' +
+    'Alterações: o espaçamento dos dois-pontos foi normalizado — o espaço antes passou para ' +
+    'depois, e o espaço que faltava depois foi inserido.',
+  'license.publicDomain': 'Domínio público',
+  'menu.translation': 'Tradução',
+  'menu.translation.failed': (name) => `Não foi possível carregar ${name}.`,
+  'menu.translation.error': (message) => `${message} Verifique sua conexão e tente novamente.`,
+  'menu.language': 'Idioma',
+
+  'genres.label': 'Gêneros',
+  // Plural and masculine, agreeing with "Gêneros".
+  'genres.labelChanged': 'Gêneros (alterados)',
+  'genres.show': 'Exibir gêneros',
+  'genres.hide': 'Ocultar gêneros',
+  'genres.hideOne': (name) => `Ocultar ${name}`,
+  'genres.showOne': (name) => `Exibir ${name}`,
+  'testament.OT': 'Antigo Testamento',
+  'testament.NT': 'Novo Testamento',
+
+  'stats.label': 'Resumo',
+  'stats.verses': (count) => [{ strong: count }, ' versículos'],
+  'stats.links': (shown, total) =>
+    total === null
+      ? [{ strong: shown }, ' ligações exibidas']
+      : [{ strong: shown }, ` de ${total} ligações exibidas`],
+  // "dos versículos conectados" would read as "of the connected verses"; this says that they are.
+  'stats.connected': (share) => [{ strong: share }, ' dos versículos estão conectados'],
+  'stats.crossTestament': (count) => [{ strong: count }, ' ligações entre os testamentos'],
+  'hint.zoom': 'para ampliar',
+  'hint.pan': 'para mover',
+  'hint.focus': 'para focar',
+  'hint.hold': 'segure para pré-visualizar',
+
+  'panel.details': 'Detalhes',
+  'panel.expand': 'Expandir detalhes',
+  'panel.collapse': 'Recolher detalhes',
+  'panel.close': 'Fechar',
+  'panel.previousVerse': 'Versículo anterior',
+  'panel.nextVerse': 'Próximo versículo',
+  'panel.previousChapter': 'Capítulo anterior',
+  'panel.nextChapter': 'Próximo capítulo',
+  'panel.copy': (reference) => `Copiar ${reference} com um link`,
+  'panel.copy.title': 'Copiar com um link',
+  'panel.copied': (reference) => `${reference} copiado`,
+  'panel.omitted': (abbreviation) => `Omitido na ${abbreviation}.`,
+  'panel.moreVerses': (count, plural) =>
+    plural === 1 ? `+ ${count} versículo` : `+ ${count} versículos`,
+  'panel.showAll': (count) => `Ver todas as ${count}`,
+
+  'note.toRange': (range) => `para ${range}`,
+  'note.fromVerse': (verse) => `do v. ${verse}`,
+  'note.toVerse': (verse) => `para o v. ${verse}`,
+
+  'panel.connectsTo': 'Conecta-se a',
+  'panel.connectsTo.note': (count) => (count === 1 ? '1 gênero' : `${String(count)} gêneros`),
+  'panel.references': 'Referências',
+  'panel.references.note': 'para onde esta passagem aponta',
+  'panel.referencedBy': 'Referenciado por',
+  'panel.referencedBy.note': 'passagens que apontam para cá',
+  'panel.verses': 'Versículos',
+  'panel.verses.note': 'toque num para focá-lo',
+  'panel.none': 'Nenhuma',
+  'panel.items': 'itens',
+  'panel.passages': 'passagens',
+  'panel.linksCounted': 'ligações',
+  'panel.versesCounted': 'versículos',
+
+  // The language names are already in the case Portuguese wants them: a message puts its
+  // arguments in place, it does not reshape them.
+  'words.heading': (language) => `Mesma palavra ${language}`,
+  'words.note': 'onde mais ela aparece',
+  'words.counted': 'palavras',
+  'words.showMore': (count) => `Ver mais ${count}`,
+  'language.hebrew': 'hebraica',
+  'language.greek': 'grega',
+  'words.credit': (max) =>
+    `, baseado no trabalho da Tyndale House, Cambridge; reduzido às formas de dicionário. ` +
+    `Palavras usadas em mais de ${max} versículos ficam de fora.`,
+  'words.creditLabel': 'Palavras:',
+
+  'loading.data': (verses, links) =>
+    `Carregando ${verses} versículos e ${links} referências cruzadas…`,
+  'error.datasetUnavailable':
+    'Não foi possível carregar esta parte dos dados da Bíblia. Verifique sua conexão e tente novamente.',
+  'error.retry': 'Tentar novamente',
+  'error.viewFailed': (view, message) => `Não foi possível iniciar ${view}: ${message}`,
+
+  'threads.direction': 'Direção dos fios',
+  'threads.outgoing': 'Aponta para',
+  'threads.incoming': 'Apontado de',
+  'threads.both': 'Ambos',
+  'threads.verse': (number) => `Versículo ${number}: ver suas conexões`,
+  'threads.omitted': (abbreviation) =>
+    `Omitido na ${abbreviation} (não consta nos manuscritos mais antigos).`,
+  'threads.spineHover': (count, plural) =>
+    plural === 1 ? `${count} fio daqui · clique para ler` : `${count} fios daqui · clique para ler`,
+  'threads.chapters': 'Capítulos',
+  'threads.previousChapter': 'Capítulo anterior',
+  'threads.nextChapter': 'Próximo capítulo',
+  'threads.stage':
+    'Fios que vão dos versículos deste capítulo até onde suas referências cruzadas chegam na ' +
+    'Bíblia, exibidos como uma barra vertical com todos os 66 livros.',
+  'arcs.connections': (count, plural) => (plural === 1 ? `${count} conexão` : `${count} conexões`),
+  'arcs.stage':
+    'Diagrama em arcos das referências cruzadas. Arraste ou use as setas para mover, role ou ' +
+    '+/- para ampliar, clique para focar uma passagem, Esc para limpar. Numa tela sensível ao ' +
+    'toque, toque e segure para pré-visualizar uma passagem.',
+
+  'credits.links': 'Ligações:',
+  'credits.fromTsk': ', do Treasury of Scripture Knowledge',
+  'credits.reindexed': ', reindexadas',
+  'credits.toKjv': ' para a numeração de versículos da KJV',
+  'credits.text': 'Texto:',
+  'credits.inspiredBy': 'Inspirado por',
+  'credits.inspiration': (title, author) => `${title}, por ${author}`,
+
+  'footer.source': 'Código-fonte no GitHub',
+  'footer.sourceLabel': 'GitHub',
+
+  'install.link': 'Instalar o aplicativo',
+  'install.linkLabel': 'Instalar',
+  'install.title': 'Instalar o aplicativo',
+  'install.lede':
+    'Deixe na sua tela inicial e leia sem conexão. Sem loja de aplicativos, sem conta.',
+  'install.now': 'Instalar agora',
+  'install.device': 'Dispositivo',
+  'install.close': 'Fechar',
+  'install.whileOnline':
+    'Abra o aplicativo uma vez com conexão: é nesse momento que ele guarda o texto bíblico e as ' +
+    'referências cruzadas no seu dispositivo.',
+};
