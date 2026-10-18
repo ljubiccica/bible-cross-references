@@ -49,7 +49,11 @@ test.describe('the offline cache', () => {
     const shell = Object.keys(stored).find((name) => name.includes('-shell-'));
     expect(shell).toBeTruthy();
     expect(stored[shell ?? '']).toBeGreaterThan(10);
-    expect(stored['bible-cross-references-data']).toBeGreaterThanOrEqual(2);
+    // Found by its prefix, not its full name: both caches carry a version, the shell's being the
+    // build's content hash and the data's the dataset format's number.
+    const data = Object.keys(stored).find((name) => name.includes('-data'));
+    expect(data).toBeTruthy();
+    expect(stored[data ?? '']).toBeGreaterThanOrEqual(2);
   });
 
   test('the app still works with the network gone', async ({ page, context }) => {
@@ -74,9 +78,14 @@ test.describe('the offline cache', () => {
       .check();
     await expect(page.locator(PANEL)).toContainText(/only begotten Son/);
     await expect
-      .poll(async () => (await cacheState(page)).caches['bible-cross-references-data'] ?? 0, {
-        timeout: 30_000,
-      })
+      .poll(
+        async () => {
+          const { caches: stored } = await cacheState(page);
+          const name = Object.keys(stored).find((key) => key.includes('-data'));
+          return stored[name ?? ''] ?? 0;
+        },
+        { timeout: 30_000 },
+      )
       .toBeGreaterThanOrEqual(3);
 
     await context.setOffline(true);
