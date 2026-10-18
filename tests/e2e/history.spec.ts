@@ -96,7 +96,9 @@ test.describe('browser history', () => {
     await expect(page.locator(ACTIVE).getByRole('button', { name: /Translation/ })).toContainText(
       'KJV',
     );
-    expect(query(page)).toContain('t=kjv');
+    // The picker moves the moment it is clicked; the address waits for the text to arrive, which
+    // is a four-megabyte download. Pressing Back between the two would be a different test.
+    await page.waitForURL(/t=kjv/);
 
     // One press, and the text change is skipped along with it: back at the first passage.
     await page.goBack();
