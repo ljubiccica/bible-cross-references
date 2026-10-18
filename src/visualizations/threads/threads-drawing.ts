@@ -1,4 +1,4 @@
-import { getBook, type BookId } from '../../core/bible/books.ts';
+import { type BookId } from '../../core/bible/books.ts';
 import type { VerseIndex } from '../../core/bible/verse-ref.ts';
 import type { VerseIndexRange } from '../../core/bible/versification.ts';
 import { elementAt } from '../../core/lib/array.ts';
@@ -6,6 +6,7 @@ import type { Connection } from '../shared/connections.ts';
 import { GENRE_HEX } from '../shared/palette.ts';
 import { voteWeight } from '../shared/vote-weight.ts';
 import type { SpineLayout } from './spine-layout.ts';
+import type { BookNames } from '../../i18n/books/types.ts';
 
 /** Where a verse of the reading pane sits, relative to the canvas top. */
 export interface VerseAnchor {
@@ -23,6 +24,8 @@ export interface ThreadsDrawing {
   readonly anchors: readonly VerseAnchor[];
   readonly connectionsByVerse: ReadonlyMap<VerseIndex, readonly Connection[]>;
   readonly verseGenres: Uint8Array;
+  /** Book names in the reader's language: the spine is read, not only looked at. */
+  readonly names: BookNames;
   /** The chapter being read ("you are here" on the spine). */
   readonly chapter: VerseIndexRange;
   /** A hovered or selected verse whose threads stand out. */
@@ -133,9 +136,11 @@ function drawSpine(context: CanvasRenderingContext2D, drawing: ThreadsDrawing): 
     const height = segment.bottom - segment.top;
     const isHovered = segment.book === emphasizedBook;
     if (height < (compact ? 12 : 10) && !isHovered) continue;
-    const book = getBook(segment.book);
+    const localized = drawing.names[segment.book];
     const room = drawing.width - labelX - 2;
-    const label = [book.name, book.id].find((text) => context.measureText(text).width <= room);
+    const label = [localized.name, localized.abbreviation ?? segment.book].find(
+      (text) => context.measureText(text).width <= room,
+    );
     if (label === undefined) continue;
     context.fillStyle = isHovered ? TEXT : MUTED;
     context.fillText(label, labelX, (segment.top + segment.bottom) / 2);

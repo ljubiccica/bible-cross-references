@@ -103,7 +103,11 @@ describe('VizDataBoundary', () => {
     serve({ failing: true });
     await renderSuspending(<VizDataBoundary>{() => <p>done</p>}</VizDataBoundary>);
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('offline');
+    expect(alert.textContent).toContain('could not be loaded');
+    // And in the reader's own words, not the importer's: the underlying error names the file and
+    // tells whoever is reading it to run a build script, which is no use to someone on a train.
+    expect(alert.textContent).not.toContain('npm run data');
+    expect(alert.textContent).not.toContain('data/translations');
     expect(screen.getByRole('button', { name: /Retry/ })).toBeDefined();
   });
 
@@ -217,9 +221,9 @@ describe('the views', () => {
 
   it('names each view for its switch and for the panel’s link', () => {
     for (const view of VIEWS) {
-      expect(view.title.length).toBeGreaterThan(0);
-      expect(view.shortTitle.length).toBeGreaterThan(0);
-      expect(view.openLabel.length).toBeGreaterThan(0);
+      expect(view.titleKey.length).toBeGreaterThan(0);
+      expect(view.shortTitleKey.length).toBeGreaterThan(0);
+      expect(view.openLabelKey.length).toBeGreaterThan(0);
     }
   });
 });
@@ -233,7 +237,9 @@ describe('DebugPage', () => {
     expect(screen.getAllByRole('listitem').length).toBeGreaterThan(3);
   });
 
-  it('shows the dashboard once the datasets are there', async () => {
+  // Renders one element per unlinked verse over a whole-Bible fixture, which is slow in
+  // happy-dom and slower again on a loaded CI runner: measured at 7s beside 21 other files.
+  it('shows the dashboard once the datasets are there', { timeout: 30_000 }, async () => {
     serve();
     debugDataLoader.reset();
     await renderSuspending(<DebugPage />);

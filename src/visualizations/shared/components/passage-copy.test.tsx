@@ -8,6 +8,7 @@ import { createVizData } from '../../../test-utils/viz-data.ts';
 import { DEFAULT_LINK_FILTER } from '../link-filter.ts';
 import { canCopy, copyQuote, quotePassage } from '../passage-quote.ts';
 import { PassagePanel } from './PassagePanel.tsx';
+import { enBooks } from '../../../i18n/books/en.ts';
 
 const JOHN_3_16 = verseIndex('John', 3, 16);
 const JOHN_3_17 = verseIndex('John', 3, 17);
@@ -188,6 +189,7 @@ describe('quotePassage', () => {
     const quote = quotePassage({
       translation,
       versification,
+      names: enBooks,
       start: JOHN_3_16,
       end: JOHN_3_16,
       url: 'https://example.org/',
@@ -200,6 +202,7 @@ describe('quotePassage', () => {
     const quote = quotePassage({
       translation,
       versification,
+      names: enBooks,
       start: ROM_5_8,
       end: ROM_5_9,
       url: 'https://example.org/',
@@ -213,6 +216,7 @@ describe('quotePassage', () => {
     const quote = quotePassage({
       translation,
       versification,
+      names: enBooks,
       start: JOHN_3_16,
       end: JOHN_3_17,
       url: 'https://example.org/',
@@ -225,6 +229,7 @@ describe('quotePassage', () => {
     const quote = quotePassage({
       translation: data.translation,
       versification,
+      names: enBooks,
       start: JOHN_3_16,
       end: JOHN_3_16,
       url: 'https://example.org/?a=1&b=2',
@@ -244,6 +249,7 @@ describe('quotePassage', () => {
     const quote = quotePassage({
       translation: data.translation,
       versification,
+      names: enBooks,
       start: ROM_5_8,
       end: ROM_5_9,
       url: 'https://example.org/',

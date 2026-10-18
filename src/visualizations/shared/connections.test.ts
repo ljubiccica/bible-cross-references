@@ -57,9 +57,11 @@ describe('landingNote', () => {
   const [intoRange, intoVerse] = incoming;
 
   it('names the whole passage a link points to, which the verse is only part of', () => {
-    expect(intoRange && landingNote(intoRange, CANONICAL_VERSIFICATION, false)).toBe(
-      'to John 3:16–17',
-    );
+    expect(intoRange && landingNote(intoRange, CANONICAL_VERSIFICATION, false)).toEqual({
+      kind: 'range',
+      start: JOHN_3_16,
+      end: JOHN_3_17,
+    });
   });
 
   it('adds nothing to a link between single verses', () => {
@@ -68,8 +70,14 @@ describe('landingNote', () => {
 
   it("names the chapter's verse where each other link starts or lands", () => {
     const [fromVerse] = outgoing;
-    expect(intoVerse && landingNote(intoVerse, CANONICAL_VERSIFICATION, true)).toBe('to v. 16');
-    expect(fromVerse && landingNote(fromVerse, CANONICAL_VERSIFICATION, true)).toBe('from v. 16');
+    expect(intoVerse && landingNote(intoVerse, CANONICAL_VERSIFICATION, true)).toEqual({
+      kind: 'to-verse',
+      verse: 16,
+    });
+    expect(fromVerse && landingNote(fromVerse, CANONICAL_VERSIFICATION, true)).toEqual({
+      kind: 'from-verse',
+      verse: 16,
+    });
   });
 });
 

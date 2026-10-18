@@ -4,12 +4,31 @@ import { VizDataBoundary } from '../visualizations/shared/components/VizDataBoun
 import { translationLoader, vizCoreLoader } from '../visualizations/shared/viz-data.ts';
 import { Explorer } from './Explorer.tsx';
 import { registerOfflineCache } from './register-offline-cache.ts';
+import {
+  initialLocaleId,
+  initialPreferredLocale,
+  setActiveLocale,
+  setPreferredLocale,
+} from '../i18n/locale-choice.ts';
+import { getLocale } from '../i18n/registry.ts';
 import { initialTranslationId } from './translation-choice.ts';
+
+// Which language to speak is settled before anything renders, so the first paint is already in
+// it: the address decides, then the reader's last choice, then what their browser asks for. It
+// is stored at once so that every component — the app, and the install dialog beside it — reads
+// the same answer from the same place.
+const url = new URL(window.location.href);
+const locale = initialLocaleId(url, navigator.languages);
+setActiveLocale(locale);
+// Kept apart from the one above: this is the reader's own language, which an address naming
+// someone else's does not change, and which a URL naming none falls back to.
+setPreferredLocale(initialPreferredLocale(navigator.languages));
+document.documentElement.lang = getLocale(locale).tag;
 
 // The text downloads beside the links rather than after them: which one to show is known from the
 // URL (or the reader's last choice) before anything renders. The app awaits it through `use()`;
 // this only starts it, so a failure is handled there.
-const translation = initialTranslationId(new URL(window.location.href));
+const translation = initialTranslationId(url, locale);
 const loadingTranslation = translationLoader(translation).load();
 void loadingTranslation.catch(() => undefined);
 

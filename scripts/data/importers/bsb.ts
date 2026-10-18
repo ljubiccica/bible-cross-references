@@ -1,6 +1,7 @@
 import { BOOKS, getReferenceName, type BookId } from '../../../src/core/bible/books.ts';
 import { toOsisId, type VerseIndex } from '../../../src/core/bible/verse-ref.ts';
 import { CANONICAL_VERSIFICATION } from '../../../src/core/bible/versification.ts';
+import { getTranslationManifest } from '../../../src/translations/registry.ts';
 import {
   DATASET_SCHEMA_VERSION,
   type DatasetProvenance,
@@ -28,6 +29,8 @@ const BOOK_IDS_BY_NAME: ReadonlyMap<string, BookId> = new Map(
 );
 
 export function importBsbText(text: string, provenance: DatasetProvenance): TranslationTextFile {
+  // The credit travels in the file: it is served on its own and kept on readers' devices.
+  const manifest = getTranslationManifest('bsb');
   const versification = CANONICAL_VERSIFICATION;
   const lines = stripByteOrderMark(text).split(/\r?\n/);
   const headerLineIndex = lines.findIndex((line) => line.startsWith(COLUMN_HEADER));
@@ -83,6 +86,8 @@ export function importBsbText(text: string, provenance: DatasetProvenance): Tran
     schemaVersion: DATASET_SCHEMA_VERSION,
     versification: versification.id,
     provenance,
+    license: manifest.license,
+    attribution: manifest.attribution,
     notices:
       omitted.length > 0
         ? [

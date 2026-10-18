@@ -9,7 +9,7 @@ const TRANSLATIONS: Readonly<Record<TranslationId, TranslationManifest>> = {
     language: 'en',
     direction: 'ltr',
     versification: 'kjv',
-    license: { name: 'Public domain', url: 'https://berean.bible/terms.htm' },
+    license: { name: 'Public domain', url: 'https://berean.bible/terms.htm', publicDomain: true },
     attribution: 'Scripture text: Berean Standard Bible (BSB), dedicated to the public domain.',
     homepage: 'https://berean.bible/',
     access: 'bundled',
@@ -24,6 +24,7 @@ const TRANSLATIONS: Readonly<Record<TranslationId, TranslationManifest>> = {
     license: {
       name: 'Public domain',
       url: 'https://ebible.org/Scriptures/details.php?id=eng-kjv2006',
+      publicDomain: true,
     },
     // The United Kingdom is the exception to "public domain", and the app says so wherever the
     // translation is chosen: rights there are a perpetual royal patent, not an expiring copyright.
@@ -32,6 +33,28 @@ const TRANSLATIONS: Readonly<Record<TranslationId, TranslationManifest>> = {
       'the United States and most of the world; in the United Kingdom rights are vested in the ' +
       'Crown and administered by the Crown’s patentee, Cambridge University Press.',
     homepage: 'https://ebible.org/Scriptures/details.php?id=eng-kjv2006',
+    access: 'bundled',
+  },
+  blivre: {
+    id: 'blivre',
+    name: 'Bíblia Livre',
+    abbreviation: 'BLIVRE',
+    language: 'pt-BR',
+    direction: 'ltr',
+    versification: 'kjv',
+    license: {
+      name: 'CC BY 3.0 BR',
+      url: 'https://creativecommons.org/licenses/by/3.0/br/',
+    },
+    // CC BY asks for the authors, the licence, the URI the licensor designated and a note
+    // that the material was changed. The edition date is included because the translators
+    // ask for it: the work is ongoing.
+    attribution:
+      'Scripture text: Bíblia Livre (BLIVRE), © Diego Santos, Mario Sérgio and Marco Teles, ' +
+      'February 2018 (Textus Receptus edition), https://sites.google.com/site/biblialivre/. ' +
+      'Changed: colon spacing was normalized — a space before a colon moved to after it, and ' +
+      'a missing space after one inserted.',
+    homepage: 'https://sites.google.com/site/biblialivre/',
     access: 'bundled',
   },
 };

@@ -6,16 +6,40 @@ that the site can be rebuilt even if an upstream URL disappears; the KJV archive
 downloads it on demand instead. Either way `../sources.json` pins the file by SHA-256 and the build
 refuses anything that does not match it, before turning them into the datasets in `public/data/`.
 
-| File                                                        | Source                                                                                                                                                               | License                                                        |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `bsb.txt`                                                   | [Berean Standard Bible](https://berean.bible/), from <https://bereanbible.com/bsb.txt>, retrieved 2026-09-25                                                         | Public domain ("dedicated to the public domain", per the file) |
-| `openbible-cross-references.zip`                            | [OpenBible.info cross-references](https://www.openbible.info/labs/cross-references/), from <https://a.openbible.info/data/cross-references.zip>, snapshot 2026-09-21 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)      |
-| `eng-kjv2006_vpl.zip` (not committed; fetched by the build) | [King James Version](https://ebible.org/Scriptures/details.php?id=eng-kjv2006), from <https://ebible.org/Scriptures/eng-kjv2006_vpl.zip>, retrieved 2026-10-15       | Public domain (in the United Kingdom: Crown copyright)         |
-| `stepbible-*.txt` (not committed; fetched by the build)     | [STEPBible](https://github.com/STEPBible/STEPBible-Data) tagged Hebrew (TAHOT) and Greek (TAGNT) with the TBESH and TBESG lexicons, retrieved 2026-10-16             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)      |
+| File                                                        | Source                                                                                                                                                                                                    | License                                                         |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `bsb.txt`                                                   | [Berean Standard Bible](https://berean.bible/), from <https://bereanbible.com/bsb.txt>, retrieved 2026-09-25                                                                                              | Public domain ("dedicated to the public domain", per the file)  |
+| `openbible-cross-references.zip`                            | [OpenBible.info cross-references](https://www.openbible.info/labs/cross-references/), from <https://a.openbible.info/data/cross-references.zip>, snapshot 2026-09-21                                      | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)       |
+| `bliv-tr_vpl.zip`                                           | [Bíblia Livre](https://sites.google.com/site/biblialivre/) (Textus Receptus edition, February 2018), from the project's own [GitHub release](https://github.com/blivre/BibliaLivre/releases/tag/2018.2.0) | [CC BY 3.0 BR](https://creativecommons.org/licenses/by/3.0/br/) |
+| `eng-kjv2006_vpl.zip` (not committed; fetched by the build) | [King James Version](https://ebible.org/Scriptures/details.php?id=eng-kjv2006), from <https://ebible.org/Scriptures/eng-kjv2006_vpl.zip>, retrieved 2026-10-15                                            | Public domain (in the United Kingdom: Crown copyright)          |
+| `stepbible-*.txt` (not committed; fetched by the build)     | [STEPBible](https://github.com/STEPBible/STEPBible-Data) tagged Hebrew (TAHOT) and Greek (TAGNT) with the TBESH and TBESG lexicons, retrieved 2026-10-16                                                  | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)       |
 
 Attribution for the scripture texts: _Berean Standard Bible (BSB), dedicated to the public
 domain._ and _King James Version (Authorized Version), the 1769 text; public domain in the United
-States and most of the world, Crown copyright in the United Kingdom._
+States and most of the world, Crown copyright in the United Kingdom._ And, for the Portuguese:
+_Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles, fevereiro de 2018,
+licensed under CC BY 3.0 Brasil (<http://creativecommons.org/licenses/by/3.0/br/>)._ Modified: the
+spacing around colons is normalized — a space before a colon moves to after it, and a missing
+space after one is inserted, which touches 270 verses in 22 books. The colon keeps its place; only
+the space moves, so not one non-whitespace character of the translation differs from the source.
+
+The square brackets the translators put around words they supplied are **kept**. They are not
+typography: in the source they are an explicit `\added` element, the convention printed Bibles set
+in italics, and they mark the difference between what the Greek and Hebrew say and what Portuguese
+needed added to read. They cover 4,838 verses in 62 books, and removing them would present a
+translator's own additions as original text — which is the kind of change the integrity of a work
+protects against, quite apart from what the licence permits. The same reasoning keeps them in the
+KJV, where they cover 14,241 verses. The
+translators ask that the edition's date always be given, because the work is ongoing; the manifest
+in `src/translations/registry.ts` carries it, and the app shows it where the translation is chosen.
+
+The project's own repository states CC BY 3.0 Brasil, while eBible.org's rebuild of the same text
+states CC BY 4.0 — citing a Brazil-ported 4.0 that does not exist, since 4.0 was never ported to
+national jurisdictions. What is pinned here is the authors' own release asset, so the licence that
+came with this copy is the one they published with it. Both versions permit redistributing the
+whole text with attribution, but they are not interchangeable: 3.0 terminates automatically on a
+breach with no cure, where 4.0 reinstates if the breach is cured within thirty days. 3.0 BR is the
+stricter of the two and the one the app complies with.
 
 Attribution for the original-language words: _STEP Bible (<https://www.STEPBible.org>), based on
 work at Tyndale House, Cambridge, licensed under CC BY 4.0

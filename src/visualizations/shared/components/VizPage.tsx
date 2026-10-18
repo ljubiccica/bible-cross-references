@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { SiteFooter } from '../../../shared/ui/SiteFooter.tsx';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import { useBottomSheet } from '../use-bottom-sheet.ts';
 import styles from './VizPage.module.css';
 
@@ -28,6 +29,7 @@ export function VizPage({
   credits,
   children,
 }: VizPageProps) {
+  const { t } = useLocalization();
   const hasPanel = panel !== undefined && panel !== null && panel !== false;
   const { expanded, setExpanded, containerRef, sheetRef, spaceRef, scrimRef } = useBottomSheet(
     hasPanel,
@@ -57,11 +59,11 @@ export function VizPage({
                 setExpanded(false);
               }}
             />
-            <aside ref={sheetRef} className={styles.panel} aria-label="Details">
+            <aside ref={sheetRef} className={styles.panel} aria-label={t('panel.details')}>
               <button
                 type="button"
                 className={styles.sheetHandle}
-                aria-label={expanded ? 'Collapse details' : 'Expand details'}
+                aria-label={expanded ? t('panel.collapse') : t('panel.expand')}
                 aria-expanded={expanded}
                 onClick={() => {
                   setExpanded(!expanded);

@@ -8,9 +8,9 @@
  */
 import { DATASET_BUILDERS, type RawSourceReader } from './datasets.ts';
 import { downloadPinnedSource } from './lib/download.ts';
-import { formatBytes, readFileIfExists, sha256Hex, writeFileAtomic } from './lib/files.ts';
+import { formatBytes, readFileIfExists, writeFileAtomic } from './lib/files.ts';
 import { publicFilePath, rawFilePath } from './lib/paths.ts';
-import { findSource, readSources } from './lib/sources.ts';
+import { findSource, pinnedDigest, readSources } from './lib/sources.ts';
 
 const sources = await readSources();
 
@@ -21,7 +21,7 @@ const readSource: RawSourceReader = async (sourceId) => {
     // A source the repository does not carry (and any that went missing) is downloaded here,
     // against its pin, so a fresh clone can build.
     (await downloadPinnedSource(source));
-  if (sha256Hex(content) !== source.sha256) {
+  if (pinnedDigest(source, content) !== source.sha256) {
     throw new Error(
       `Raw file for "${sourceId}" does not match its pinned checksum. Run \`npm run data:fetch\`.`,
     );

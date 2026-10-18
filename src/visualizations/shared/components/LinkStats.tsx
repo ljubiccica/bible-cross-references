@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
-import { formatInteger, formatShare } from '../../../shared/lib/format.ts';
+import { Fragment, type ReactNode } from 'react';
+import type { Emphasized } from '../../../i18n/messages/types.ts';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import type { LinkSummary } from '../link-summary.ts';
 import styles from './LinkStats.module.css';
 
@@ -12,19 +13,34 @@ interface LinkStatsProps {
   readonly hint?: { readonly pointer: ReactNode; readonly touch: ReactNode };
 }
 
+/** Renders a message's pieces, setting its numbers apart from the words around them. */
+function Line({ parts }: { readonly parts: Emphasized }) {
+  return (
+    <>
+      {parts.map((part, index) => (
+        <Fragment key={index}>
+          {typeof part === 'string' ? part : <strong>{part.strong}</strong>}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 /** A quiet corner summary of what is on screen; context, not the main event. */
 export function LinkStats({ summary, hint }: LinkStatsProps) {
+  const { t, n, share } = useLocalization();
   const { verseCount, shownLinks, totalLinks, connectedVerses, crossTestamentLinks } = summary;
   return (
-    <div className={styles.stats} aria-label="Summary">
+    <div className={styles.stats} aria-label={t('stats.label')}>
       <span>
-        <strong>{formatInteger(verseCount)}</strong> verses ·{' '}
-        <strong>{formatInteger(shownLinks)}</strong>
-        {shownLinks < totalLinks && ` of ${formatInteger(totalLinks)}`} links shown
+        <Line parts={t('stats.verses')(n(verseCount))} /> ·{' '}
+        <Line
+          parts={t('stats.links')(n(shownLinks), shownLinks < totalLinks ? n(totalLinks) : null)}
+        />
       </span>
       <span className={styles.secondary}>
-        <strong>{formatShare(connectedVerses, verseCount)}</strong> of verses connected ·{' '}
-        <strong>{formatInteger(crossTestamentLinks)}</strong> links between the testaments
+        <Line parts={t('stats.connected')(share(connectedVerses, verseCount))} /> ·{' '}
+        <Line parts={t('stats.crossTestament')(n(crossTestamentLinks))} />
       </span>
       {hint !== undefined && (
         <>

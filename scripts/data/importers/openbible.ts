@@ -6,8 +6,11 @@ import {
   type DatasetProvenance,
   type ImportNotice,
 } from '../../../src/core/datasets/formats.ts';
+import { getCrossReferenceSourceManifest } from '../../../src/cross-references/registry.ts';
 import { stripByteOrderMark } from '../lib/files.ts';
 import { createNotice } from '../lib/notices.ts';
+
+const OPENBIBLE = getCrossReferenceSourceManifest('openbible');
 
 /**
  * Importer for the OpenBible.info cross-reference dataset
@@ -139,6 +142,11 @@ export function importOpenBibleCrossReferences(
     notices,
     sourceId: 'openbible',
     sourceRowCount,
+    // The credit travels in the file: it is served on its own at a stable URL and kept on
+    // readers' devices by the offline cache, so a copy that travels without the app should still
+    // say whose data it is and under what licence.
+    license: OPENBIBLE.license,
+    attribution: OPENBIBLE.attribution,
     links: {
       offsets,
       targetStart: links.map((link) => link.targetStart),

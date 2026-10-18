@@ -14,6 +14,13 @@ interface MenuButtonProps {
   readonly value?: string;
   /** Shows a small dot on the button, e.g. when the menu's settings differ from the defaults. */
   readonly indicator?: boolean;
+  /**
+   * The accessible name to use while `indicator` is set, e.g. "Filters (changed)". Supplied by
+   * the menu rather than composed here, because an adjective agrees with the noun it follows:
+   * Portuguese needs "Filtros (alterados)" but "Tradução (alterada)", and only the caller
+   * knows which noun it passed.
+   */
+  readonly changedLabel?: string;
   /** Marks the button busy while the choice is being applied (e.g. a text still downloading). */
   readonly busy?: boolean;
   /** The popover's content. */
@@ -42,12 +49,14 @@ export function MenuButton({
   icon: Icon,
   value,
   indicator = false,
+  changedLabel,
   busy = false,
   children,
 }: MenuButtonProps) {
   const [open, setOpen] = useState(false);
   const name = value === undefined ? label : `${label}: ${value}`;
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
 
@@ -63,6 +72,9 @@ export function MenuButton({
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setOpen(false);
+        // Escape is a keyboard gesture, so focus goes back to the button it came from rather
+        // than to the top of the page.
+        buttonRef.current?.focus();
       }
     };
     document.addEventListener('pointerdown', closeOnOutside);
@@ -92,11 +104,12 @@ export function MenuButton({
   return (
     <div ref={menuRef} className={styles.menu}>
       <button
+        ref={buttonRef}
         type="button"
         className={`${styles.button} ${styles.menuButton}`}
         // Named explicitly: on phones the label is hidden and only the icon shows, and a menu
         // showing its value says both ("Translation: KJV").
-        aria-label={indicator ? `${name} (changed)` : name}
+        aria-label={indicator && changedLabel !== undefined ? changedLabel : name}
         aria-expanded={open}
         aria-controls={popoverId}
         aria-busy={busy || undefined}

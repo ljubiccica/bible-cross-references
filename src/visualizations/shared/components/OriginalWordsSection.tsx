@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { formatPassage, versePassage, type Passage } from '../../../core/bible/passage.ts';
 import type { VerseIndex } from '../../../core/bible/verse-ref.ts';
 import { ExpandIcon, WordsIcon } from '../../../shared/ui/icons.tsx';
-import { formatInteger } from '../../../shared/lib/format.ts';
 import { verseTextOrNote } from '../../../translations/verse-text.ts';
 import type { OriginalWordsDataset } from '../../../words/load-original-words.ts';
 import { originalWordsIfLoaded, originalWordsLoader, resetOriginalWords } from '../viz-data.ts';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import { PanelSection } from './PanelSection.tsx';
 import type { VizData } from '../viz-data.ts';
 import styles from './PassagePanel.module.css';
@@ -61,6 +61,7 @@ export function OriginalWordsSection({
   readonly data: VizData;
   readonly onSelect: (passage: Passage) => void;
 }) {
+  const { t, books, n } = useLocalization();
   const words = useOriginalWords();
   const [expanded, setExpanded] = useState(false);
   const [openWord, setOpenWord] = useState<number | null>(null);
@@ -73,7 +74,8 @@ export function OriginalWordsSection({
   if (inVerse.length === 0) {
     return null;
   }
-  const language = versification.bookAt(verse).testament === 'OT' ? 'Hebrew' : 'Greek';
+  const hebrew = versification.bookAt(verse).testament === 'OT';
+  const language = t(hebrew ? 'language.hebrew' : 'language.greek');
   const visible = expanded ? inVerse : inVerse.slice(0, INITIAL_WORDS);
 
   return (
@@ -81,10 +83,10 @@ export function OriginalWordsSection({
       <PanelSection
         id="same-word"
         icon={WordsIcon}
-        title={`Same ${language} word`}
-        description="where else it is used"
+        title={t('words.heading')(language)}
+        description={t('words.note')}
         count={inVerse.length}
-        countLabel="words"
+        countLabel={t('words.counted')}
       >
         {visible.map((word) => {
           const open = openWord === word.index;
@@ -99,9 +101,9 @@ export function OriginalWordsSection({
                 }}
               >
                 <span className={styles.itemRef}>
-                  <strong lang={language === 'Hebrew' ? 'he' : 'el'}>{word.lemma}</strong>
+                  <strong lang={hebrew ? 'he' : 'el'}>{word.lemma}</strong>
                   <span className={styles.wordSound}>{word.transliteration}</span>
-                  <span className={styles.count}>{formatInteger(word.verseCount)}</span>
+                  <span className={styles.count}>{n(word.verseCount)}</span>
                   <ExpandIcon className={styles.chevron} />
                 </span>
                 <span className={styles.snippet}>{word.gloss}</span>
@@ -118,7 +120,7 @@ export function OriginalWordsSection({
                     }}
                   >
                     <span className={styles.itemRef}>
-                      <strong>{formatPassage(versePassage(other), versification)}</strong>
+                      <strong>{formatPassage(versePassage(other), versification, books)}</strong>
                     </span>
                     <span className={styles.snippet}>{verseTextOrNote(translation, other)}</span>
                   </button>
@@ -134,14 +136,14 @@ export function OriginalWordsSection({
               setExpanded(true);
             }}
           >
-            Show {formatInteger(inVerse.length - INITIAL_WORDS)} more
+            {t('words.showMore')(n(inVerse.length - INITIAL_WORDS))}
           </button>
         )}
       </PanelSection>
       {/* Outside the section's body: the credit is a condition of using the data, so it does
           not go away when a reader folds the words out of sight. */}
       <p className={styles.credit}>
-        Words:{' '}
+        {t('words.creditLabel')}{' '}
         <a href={words.manifest.homepage} target="_blank" rel="noreferrer">
           STEP Bible
         </a>{' '}
@@ -149,8 +151,7 @@ export function OriginalWordsSection({
         <a href={words.manifest.license.url} target="_blank" rel="noreferrer">
           {words.manifest.license.name}
         </a>
-        ), based on work at Tyndale House, Cambridge; reduced to dictionary forms. Words used in
-        more than {formatInteger(words.maxVerses)} verses are left out.
+        ){t('words.credit')(n(words.maxVerses))}
       </p>
     </>
   );

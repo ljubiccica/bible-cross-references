@@ -13,6 +13,7 @@
     "build": "npm run data:build && tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
+    "typecoverage": "node scripts/type-coverage.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -22,7 +23,7 @@
     "test:e2e": "playwright test --project=desktop --project=phone --project=offline",
     "test:visual": "playwright test --project=visual-desktop --project=visual-phone",
     "test:visual:update": "npm run test:visual -- --update-snapshots",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test:coverage",
+    "check": "npm run typecheck && npm run typecoverage && npm run lint && npm run format:check && npm run test:coverage",
     "data": "npm run data:fetch && npm run data:build",
     "data:fetch": "node scripts/data/fetch.ts",
     "data:build": "node scripts/data/build.ts"

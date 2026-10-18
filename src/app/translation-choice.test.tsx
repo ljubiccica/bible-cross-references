@@ -42,39 +42,39 @@ describe('translationFromParams', () => {
 describe('readPreferredTranslation', () => {
   it('falls back to the default when nothing is stored, or storage is unavailable', () => {
     withStoredPreference(null);
-    expect(readPreferredTranslation()).toBe(DEFAULT_TRANSLATION_ID);
+    expect(readPreferredTranslation('en')).toBe(DEFAULT_TRANSLATION_ID);
     Reflect.deleteProperty(globalThis, 'localStorage');
-    expect(readPreferredTranslation()).toBe(DEFAULT_TRANSLATION_ID);
+    expect(readPreferredTranslation('en')).toBe(DEFAULT_TRANSLATION_ID);
   });
 
   it('ignores a stored value the app does not know', () => {
     withStoredPreference('nope');
-    expect(readPreferredTranslation()).toBe(DEFAULT_TRANSLATION_ID);
+    expect(readPreferredTranslation('en')).toBe(DEFAULT_TRANSLATION_ID);
   });
 
   it('reads a stored choice', () => {
     withStoredPreference('kjv');
-    expect(readPreferredTranslation()).toBe('kjv');
+    expect(readPreferredTranslation('en')).toBe('kjv');
   });
 });
 
 describe('initialTranslationId', () => {
   it('prefers the URL over the stored choice', () => {
     withStoredPreference('kjv');
-    expect(initialTranslationId(url('?t=bsb'))).toBe('bsb');
-    expect(initialTranslationId(url(''))).toBe('kjv');
+    expect(initialTranslationId(url('?t=bsb'), 'en')).toBe('bsb');
+    expect(initialTranslationId(url(''), 'en')).toBe('kjv');
   });
 
   it('falls back to the stored choice when the URL names an unknown one', () => {
     withStoredPreference('kjv');
-    expect(initialTranslationId(url('?t=nope'))).toBe('kjv');
+    expect(initialTranslationId(url('?t=nope'), 'en')).toBe('kjv');
   });
 });
 
 describe('useTranslationPreference', () => {
   /** A reader's choice, shown and changed the way the app does it. */
   function Choice() {
-    const [translation, choose] = useTranslationPreference();
+    const [translation, choose] = useTranslationPreference('en');
     return (
       <button
         type="button"
@@ -112,6 +112,6 @@ describe('useTranslationPreference', () => {
       await userEvent.click(screen.getByRole('button'));
     });
     expect(screen.getByRole('button').textContent).toBe('kjv');
-    expect(readPreferredTranslation()).toBe('kjv');
+    expect(readPreferredTranslation('en')).toBe('kjv');
   });
 });

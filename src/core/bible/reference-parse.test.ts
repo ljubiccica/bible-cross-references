@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parseReference } from './reference-parse.ts';
 import { KJV_VERSIFICATION } from './versification.ts';
+import { enBooks } from '../../i18n/books/en.ts';
+import { ptBooks } from '../../i18n/books/pt.ts';
 
-const parse = (input: string) => parseReference(input, KJV_VERSIFICATION);
+const parse = (input: string) => parseReference(input, KJV_VERSIFICATION, enBooks);
 
 describe('parseReference', () => {
   it.each([
@@ -20,14 +22,36 @@ describe('parseReference', () => {
   });
 
   it.each([
-    ['', 'Enter a reference like "John 3:16" or "Ps 23".'],
-    ['John 3:16-18', 'Enter a reference like "John 3:16" or "Ps 23".'],
-    ['Hezekiah 1:1', 'Unknown book "Hezekiah".'],
-    ['Jo 1:1', '"Jo" could be Joshua, Job, Joel, Jonah or John.'],
-    ['Genesis 51:1', 'Genesis has 50 chapters.'],
-    ['Psalms 23:7', 'Psalm 23 has 6 verses.'],
-    ['John 3:0', 'John 3 has 36 verses.'],
+    ['', { kind: 'unreadable' }],
+    ['John 3:16-18', { kind: 'unreadable' }],
+    ['Hezekiah 1:1', { kind: 'unknown-book', query: 'Hezekiah' }],
+    [
+      'Jo 1:1',
+      {
+        kind: 'ambiguous-book',
+        query: 'Jo',
+        candidates: ['Josh', 'Job', 'Joel', 'Jonah', 'John'],
+      },
+    ],
+    ['Genesis 51:1', { kind: 'no-such-chapter', book: 'Gen', chapters: 50 }],
+    ['Psalms 23:7', { kind: 'no-such-verse', book: 'Ps', chapter: 23, verses: 6 }],
+    ['John 3:0', { kind: 'no-such-verse', book: 'John', chapter: 3, verses: 36 }],
   ])('rejects %j', (input, error) => {
     expect(parse(input)).toEqual({ ok: false, error });
+  });
+
+  it('reads a reference written with accents, which is how Portuguese is typed', () => {
+    for (const input of ['Gênesis 1:1', 'genesis 1:1', 'Êxodo 3:14', 'João 3:16', 'Jó 1:1']) {
+      expect(parseReference(input, KJV_VERSIFICATION, ptBooks).ok).toBe(true);
+    }
+  });
+
+  it('reads Jo as João and Jó as Job, which is the difference the accent makes', () => {
+    const book = (input: string) => {
+      const result = parseReference(input, KJV_VERSIFICATION, ptBooks);
+      return result.ok ? result.reference.book : result.error.kind;
+    };
+    expect(book('Jo 3:16')).toBe('John');
+    expect(book('Jó 1:1')).toBe('Job');
   });
 });

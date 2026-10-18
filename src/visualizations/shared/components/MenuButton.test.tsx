@@ -78,8 +78,13 @@ describe('MenuButton', () => {
   });
 
   it('says when its settings differ from the defaults', () => {
-    renderMenu({ indicator: true });
+    renderMenu({ indicator: true, changedLabel: 'Filters (changed)' });
     expect(screen.getByRole('button').getAttribute('aria-label')).toBe('Filters (changed)');
+  });
+
+  it('keeps its plain name when it is marked changed but given no changed name', () => {
+    renderMenu({ indicator: true });
+    expect(screen.getByRole('button').getAttribute('aria-label')).toBe('Filters');
   });
 
   it('says when the choice is still being applied', () => {

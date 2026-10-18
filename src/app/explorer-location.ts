@@ -8,6 +8,9 @@ import {
   VOTE_THRESHOLDS,
   type LinkFilter,
 } from '../visualizations/shared/link-filter.ts';
+import { LOCALE_PARAM, localeFromParams } from '../i18n/locale-choice.ts';
+import type { LocaleId } from '../i18n/locale-id.ts';
+import { DEFAULT_LOCALE_ID } from '../i18n/registry.ts';
 import { translationFromParams, TRANSLATION_PARAM } from './translation-choice.ts';
 
 /** URL query parameter holding the focused passage as an OSIS ID (`?ref=John.3.16`, `?ref=Isa.53`). */
@@ -30,6 +33,12 @@ export interface ExplorerLocation<Id extends string> {
   readonly passage: Passage | null;
   readonly filter: LinkFilter;
   readonly translation: TranslationId;
+  /**
+   * The language the interface speaks. A link naming one reads as its author read it; a link
+   * naming none reads in the recipient's own language, which is the case for English authors,
+   * since `?lang=en` is left out to keep a plain link plain.
+   */
+  readonly locale: LocaleId;
 }
 
 /** Unknown thresholds and genres fall back to the defaults. */
@@ -64,6 +73,7 @@ export function parseExplorerUrl<Id extends string>(
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
   defaultTranslation: TranslationId,
+  defaultLocale: LocaleId,
 ): ExplorerLocation<Id> {
   const path = url.pathname.startsWith(base) ? normalizePath(url.pathname.slice(base.length)) : '';
   const route = routes.find((candidate) => candidate.path === path) ?? routes[0];
@@ -73,6 +83,7 @@ export function parseExplorerUrl<Id extends string>(
     passage: id === null ? null : (parsePassageOsisId(id, versification) ?? null),
     filter: parseFilter(url.searchParams),
     translation: translationFromParams(url.searchParams) ?? defaultTranslation,
+    locale: localeFromParams(url.searchParams) ?? defaultLocale,
   };
 }
 
@@ -95,7 +106,8 @@ export function explorerUrl(
     passage,
     filter,
     translation,
-  }: Pick<ExplorerLocation<string>, 'passage' | 'filter' | 'translation'>,
+    locale,
+  }: Pick<ExplorerLocation<string>, 'passage' | 'filter' | 'translation' | 'locale'>,
   base: string,
   versification: Versification,
   /**
@@ -111,6 +123,9 @@ export function explorerUrl(
   }
   if (translation !== omitTranslation) {
     params.set(TRANSLATION_PARAM, translation);
+  }
+  if (locale !== DEFAULT_LOCALE_ID) {
+    params.set(LOCALE_PARAM, locale);
   }
   if (filter.minVotes !== DEFAULT_LINK_FILTER.minVotes) {
     params.set(VOTES_PARAM, filter.minVotes === -Infinity ? 'all' : String(filter.minVotes));

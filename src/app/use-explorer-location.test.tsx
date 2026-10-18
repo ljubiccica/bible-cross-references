@@ -18,7 +18,7 @@ const JOHN_3_16 = versePassage(
 const PS_23_1 = versePassage(KJV_VERSIFICATION.indexOf({ book: 'Ps', chapter: 23, verse: 1 }) ?? 0);
 
 function useLocation() {
-  return useExplorerLocation(ROUTES, KJV_VERSIFICATION, DEFAULT_TRANSLATION_ID);
+  return useExplorerLocation(ROUTES, KJV_VERSIFICATION, DEFAULT_TRANSLATION_ID, 'en');
 }
 
 beforeEach(() => {

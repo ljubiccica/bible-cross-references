@@ -1,6 +1,7 @@
 import { formatVerseIndexRange } from '../../../core/bible/reference-format.ts';
 import type { VerseIndex } from '../../../core/bible/verse-ref.ts';
 import { CANONICAL_VERSIFICATION } from '../../../core/bible/versification.ts';
+import { enBooks } from '../../../i18n/books/en.ts';
 import { useSelectVerse } from '../verse-navigation.ts';
 import styles from '../DebugPage.module.css';
 
@@ -21,7 +22,7 @@ export function VerseLink({ verse, rangeEnd = verse }: VerseLinkProps) {
         selectVerse(verse);
       }}
     >
-      {formatVerseIndexRange(CANONICAL_VERSIFICATION, verse, rangeEnd)}
+      {formatVerseIndexRange(CANONICAL_VERSIFICATION, enBooks, verse, rangeEnd)}
     </button>
   );
 }

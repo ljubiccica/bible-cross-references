@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { lookupBook, normalizeBookName } from './book-lookup.ts';
+import { bookNameCollisions, lookupBook, normalizeBookName } from './book-lookup.ts';
+import { enBooks } from '../../i18n/books/en.ts';
 
 function foundId(query: string): string | undefined {
-  const result = lookupBook(query);
+  const result = lookupBook(query, enBooks);
   return result.kind === 'found' ? result.book.id : undefined;
 }
 
@@ -40,7 +41,7 @@ describe('lookupBook', () => {
   });
 
   it('reports ambiguous prefixes with their candidates', () => {
-    const result = lookupBook('jo');
+    const result = lookupBook('jo', enBooks);
     expect(result.kind).toBe('ambiguous');
     if (result.kind === 'ambiguous') {
       expect(result.candidates.map((book) => book.id)).toEqual([
@@ -54,7 +55,31 @@ describe('lookupBook', () => {
   });
 
   it('reports unknown names', () => {
-    expect(lookupBook('xyz').kind).toBe('unknown');
-    expect(lookupBook('').kind).toBe('unknown');
+    expect(lookupBook('xyz', enBooks).kind).toBe('unknown');
+    expect(lookupBook('', enBooks).kind).toBe('unknown');
+  });
+});
+
+describe('a catalogue two books share a spelling in', () => {
+  /** `enBooks` with Jonah answering to a name John already has. */
+  const clashing = {
+    ...enBooks,
+    Jonah: { ...enBooks.Jonah, aliases: [...enBooks.Jonah.aliases, 'john'] },
+  };
+
+  it('is reported, so a translator finds out in CI', () => {
+    expect(bookNameCollisions(clashing)).toEqual(['john: Jonah and John']);
+  });
+
+  it('keeps one book rather than throwing, so the search box still works', () => {
+    // This is reached from a submit handler, outside any error boundary: throwing here would
+    // not show a message, it would just make searching stop working with no explanation. The
+    // book that claimed the spelling first keeps it — Jonah, which the canon reaches first.
+    const result = lookupBook('John', clashing);
+    expect(result.kind === 'found' && result.book.id).toBe('Jonah');
+  });
+
+  it('finds no collision in the catalogue the app ships', () => {
+    expect(bookNameCollisions(enBooks)).toEqual([]);
   });
 });

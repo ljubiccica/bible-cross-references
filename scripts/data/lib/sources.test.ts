@@ -2,7 +2,9 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { findSource, type RawSource } from './sources.ts';
+import { strToU8, zipSync } from 'fflate';
+import { sha256Hex } from './files.ts';
+import { findSource, pinnedDigest, type RawSource } from './sources.ts';
 import type * as PathsModule from './paths.ts';
 
 const VALID: RawSource = {
@@ -94,5 +96,47 @@ describe('findSource', () => {
 
   it('says which ID is missing rather than returning nothing', () => {
     expect(() => findSource([VALID], 'kjv')).toThrow(/no source with ID "kjv"/);
+  });
+});
+
+describe('pinning an entry inside an archive', () => {
+  const text = strToU8('GEN 1:1 In the beginning.');
+  const archive = (stamp: number): Uint8Array =>
+    zipSync({ 'book.txt': [text, { mtime: stamp }] }, { mtime: stamp });
+  const member = { ...VALID, member: 'book.txt', sha256: sha256Hex(text) };
+
+  it('reads the digest of the entry, not of the archive around it', () => {
+    expect(pinnedDigest(member, archive(1_700_000_000_000))).toBe(member.sha256);
+  });
+
+  it('ignores a rebuild that only moved the timestamps', () => {
+    // Why this exists: eBible.org regenerates its archives, so the ZIP's bytes change while
+    // every file inside stays identical. A pin on the archive then fails for no real reason.
+    const monday = archive(1_700_000_000_000);
+    const tuesday = archive(1_700_086_400_000);
+    expect(Buffer.compare(Buffer.from(monday), Buffer.from(tuesday))).not.toBe(0);
+    expect(pinnedDigest(member, monday)).toBe(pinnedDigest(member, tuesday));
+  });
+
+  it('still catches a change to the text itself', () => {
+    const tampered = zipSync({ 'book.txt': strToU8('GEN 1:1 In the beginning, altered.') });
+    expect(pinnedDigest(member, tampered)).not.toBe(member.sha256);
+  });
+
+  it('reads the whole file where no entry is named', () => {
+    const bytes = strToU8('plain text, not an archive');
+    expect(pinnedDigest(VALID, bytes)).toBe(sha256Hex(bytes));
+  });
+
+  it('says which entry is missing rather than returning nothing', () => {
+    expect(() => pinnedDigest(member, zipSync({ 'other.txt': text }))).toThrow(
+      /no entry named "book.txt"/,
+    );
+  });
+
+  it('refuses a member name that is not a plain file name', async () => {
+    await withSourcesFile({ sources: [{ ...VALID, member: '../escape.txt' }] });
+    const { readSources: read } = await import('./sources.ts');
+    await expect(read()).rejects.toThrow(/sources\[0\]\.member/);
   });
 });

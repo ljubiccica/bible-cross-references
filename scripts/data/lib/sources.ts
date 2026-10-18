@@ -5,7 +5,7 @@ import {
   expectString,
   ValidationError,
 } from '../../../src/core/lib/validation.ts';
-import { writeFileAtomic } from './files.ts';
+import { extractZipEntry, sha256Hex, writeFileAtomic } from './files.ts';
 import { SOURCES_FILE } from './paths.ts';
 
 /** An upstream file the data pipeline depends on, pinned by its SHA-256 checksum. */
@@ -15,8 +15,21 @@ export interface RawSource {
   readonly url: string;
   /** File name under `data/raw/`. */
   readonly fileName: string;
-  /** Expected SHA-256 (hex) of the downloaded file. */
+  /**
+   * Expected SHA-256 (hex) of the pinned content: the downloaded file, or the archive entry
+   * `member` names.
+   */
   readonly sha256: string;
+  /**
+   * An entry inside the archive whose digest is pinned, instead of the archive's own.
+   *
+   * Some hosts rebuild their archives on a schedule. The files inside do not change, but a ZIP
+   * carries each entry's timestamp, so the archive's digest moves for reasons that have nothing
+   * to do with the data — and a pin on it then fails on an ordinary day, for no real reason.
+   * Pinning the one entry an importer actually reads is both steadier and stricter: it is the
+   * bytes that matter, and nothing else can drift past it.
+   */
+  readonly member?: string;
   /** Date (YYYY-MM-DD) on which the pinned file was retrieved. */
   readonly retrievedAt: string;
   readonly license: string;
@@ -43,6 +56,9 @@ function parseRawSource(value: unknown, path: string): RawSource {
     url: expectString(record['url'], `${path}.url`),
     fileName: expectMatch(record['fileName'], FILE_NAME_PATTERN, `${path}.fileName`),
     sha256: expectMatch(record['sha256'], SHA256_PATTERN, `${path}.sha256`),
+    ...(record['member'] === undefined
+      ? {}
+      : { member: expectMatch(record['member'], FILE_NAME_PATTERN, `${path}.member`) }),
     retrievedAt: expectMatch(record['retrievedAt'], DATE_PATTERN, `${path}.retrievedAt`),
     license: expectString(record['license'], `${path}.license`),
     homepage: expectString(record['homepage'], `${path}.homepage`),
@@ -73,4 +89,16 @@ export function findSource(sources: readonly RawSource[], id: string): RawSource
     throw new Error(`${SOURCES_FILE} has no source with ID "${id}".`);
   }
   return source;
+}
+
+/**
+ * The bytes a source's pin covers: the whole file, or the archive entry it names.
+ */
+export function pinnedContent(source: RawSource, content: Uint8Array): Uint8Array {
+  return source.member === undefined ? content : extractZipEntry(content, source.member);
+}
+
+/** Whether a file matches its pin, by the digest of whatever the pin covers. */
+export function pinnedDigest(source: RawSource, content: Uint8Array): string {
+  return sha256Hex(pinnedContent(source, content));
 }

@@ -25,10 +25,16 @@ declare const DATASETS: readonly string[];
 declare const DATA_DIRECTORY: string;
 /** A hash of this version's files; a new version gets new caches. */
 declare const VERSION: string;
+/** The dataset format's version, which the data cache is keyed on. */
+declare const SCHEMA_VERSION: number;
 
 const PREFIX = 'bible-cross-references';
 const SHELL_CACHE = `${PREFIX}-shell-${VERSION}`;
-const DATA_CACHE = `${PREFIX}-data`;
+// Keyed on the dataset format, not on the build: datasets are large and their URLs carry no
+// content hash, so keeping them across releases is the point. But a release that changes
+// what a dataset file looks like cannot read the one already stored, and the reader has no
+// way to clear it — so a format change retires the old cache instead of inheriting it.
+const DATA_CACHE = `${PREFIX}-data-v${String(SCHEMA_VERSION)}`;
 
 const scope = new URL(self.registration.scope);
 // Cached files are the same whatever the request's headers (they are named by their content, or
@@ -86,7 +92,10 @@ self.addEventListener('message', (event) => {
   ) {
     return;
   }
-  const urls = message.paths
+  // `Array.isArray` narrows only to `any[]`, so the elements arrive untyped even here. This
+  // is a message from the page, which is the one input the worker does not control.
+  const paths: readonly unknown[] = message.paths;
+  const urls = paths
     .filter((path): path is string => typeof path === 'string')
     .map(toUrl)
     .filter((url) => url.startsWith(new URL(`${DATA_DIRECTORY}/`, scope).href));
@@ -100,10 +109,24 @@ self.addEventListener('message', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      const oldShells = (await caches.keys()).filter(
+      const names = await caches.keys();
+      const oldShells = names.filter(
         (name) => name.startsWith(`${PREFIX}-shell-`) && name !== SHELL_CACHE,
       );
       await Promise.all(oldShells.map((name) => caches.delete(name)));
+
+      // Data from a previous format goes only once this version has data of its own. Install
+      // fills the new cache when there is a network; with none it stays empty, and dropping the
+      // old one here would leave a reader who is offline with no datasets at all — a worse
+      // outcome than keeping files this version can still read. They are cleared on the next
+      // online visit instead.
+      const replacement = await caches.open(DATA_CACHE);
+      if ((await replacement.keys()).length > 0) {
+        const oldData = names.filter(
+          (name) => name.startsWith(`${PREFIX}-data`) && name !== DATA_CACHE,
+        );
+        await Promise.all(oldData.map((name) => caches.delete(name)));
+      }
       await self.clients.claim();
     })(),
   );

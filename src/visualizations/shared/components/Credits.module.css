@@ -1,9 +1,10 @@
-/* Phones keep the attribution the licence asks for, and nothing else: the creator and the
-   licence of the cross-references. The rest, the text's own credit included, is background — and
-   the room it frees is what keeps the footer on one line on a 320px phone. */
+/* Phones keep the attribution the licences ask for and drop the rest. What is background and
+   what is a condition depends on the text being read: a public-domain one is a courtesy and goes,
+   a CC BY one names its licence on every copy and stays. The room this frees is what keeps the
+   footer on one line on a 320px phone, so only what may go, goes. */
 @media (max-width: 47.99rem) {
   .detail,
-  .text {
+  .text[data-optional='true'] {
     display: none;
   }
 }

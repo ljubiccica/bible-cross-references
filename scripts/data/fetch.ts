@@ -7,9 +7,9 @@
  */
 import { parseArgs } from 'node:util';
 import { download } from './lib/download.ts';
-import { formatBytes, readFileIfExists, sha256Hex, today, writeFileAtomic } from './lib/files.ts';
+import { formatBytes, readFileIfExists, today, writeFileAtomic } from './lib/files.ts';
 import { rawFilePath } from './lib/paths.ts';
-import { readSources, writeSources, type RawSource } from './lib/sources.ts';
+import { pinnedDigest, readSources, writeSources, type RawSource } from './lib/sources.ts';
 
 const { values: options } = parseArgs({
   options: { update: { type: 'boolean', default: false } },
@@ -19,14 +19,14 @@ const { values: options } = parseArgs({
 async function fetchSource(source: RawSource): Promise<RawSource> {
   const path = rawFilePath(source.fileName);
   const existing = await readFileIfExists(path);
-  if (existing && sha256Hex(existing) === source.sha256) {
+  if (existing && pinnedDigest(source, existing) === source.sha256) {
     console.log(`✓ ${source.id}: up to date (${formatBytes(existing.byteLength)})`);
     return source;
   }
 
   console.log(`↓ ${source.id}: downloading ${source.url}`);
   const content = await download(source.url);
-  const sha256 = sha256Hex(content);
+  const sha256 = pinnedDigest(source, content);
   if (sha256 === source.sha256) {
     await writeFileAtomic(path, content);
     console.log(`✓ ${source.id}: downloaded and verified (${formatBytes(content.byteLength)})`);

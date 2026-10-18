@@ -1,5 +1,7 @@
 import { chapterPassageOf, versePassage, type Passage } from '../../core/bible/passage.ts';
+import type { GenreId } from '../../core/bible/genres.ts';
 import type { VerseIndexRange, Versification } from '../../core/bible/versification.ts';
+import type { BookNames } from '../../i18n/books/types.ts';
 import { attachGestures, type GesturePoint, type PreviewInput } from '../shared/gestures.ts';
 import { animate, FrameScheduler, MAX_PIXEL_RATIO } from '../shared/frames.ts';
 import type { ArcInstances } from './arc-instances.ts';
@@ -44,6 +46,9 @@ export interface ArcsControllerOptions {
   readonly glCanvas: HTMLCanvasElement;
   readonly overlayCanvas: HTMLCanvasElement;
   readonly versification: Versification;
+  /** Book and genre names for the axis; replaced when the reader changes language. */
+  readonly names: BookNames;
+  readonly genreNames: Readonly<Record<GenreId, string>>;
   readonly onHover: (hover: ArcHover | null) => void;
   readonly onSelect: (passage: Passage) => void;
   readonly onClear: () => void;
@@ -90,6 +95,8 @@ export class ArcsController {
   readonly #detachGestures: () => void;
   #layout: ArcLayout = computeArcLayout(0, 0);
   #view: AxisView;
+  #names: BookNames;
+  #genreNames: Readonly<Record<GenreId, string>>;
   #focus: VerseIndexRange | null = null;
   #hover: VerseIndexRange | null = null;
   #linkPreview: ArcPreview | null = null;
@@ -115,6 +122,8 @@ export class ArcsController {
     }
     this.#overlay = overlay;
     this.#view = fullView(options.versification.verseCount);
+    this.#names = options.names;
+    this.#genreNames = options.genreNames;
     this.#scheduler = new FrameScheduler(() => {
       this.#draw();
     });
@@ -231,6 +240,13 @@ export class ArcsController {
     });
   }
 
+  /** The axis is lettered, so a change of language repaints it. */
+  setNames(names: BookNames, genreNames: Readonly<Record<GenreId, string>>): void {
+    this.#names = names;
+    this.#genreNames = genreNames;
+    this.#draw();
+  }
+
   /** Shown or hidden; drawing resumes (and the intro starts) when it's shown. */
   setActive(active: boolean): void {
     this.#active = active;
@@ -252,6 +268,8 @@ export class ArcsController {
       layout: this.#layout,
       view: this.#view,
       versification: this.#options.versification,
+      names: this.#names,
+      genreNames: this.#genreNames,
       focus: this.#focus,
       hover: this.#hover,
       passage: this.#linkPreview?.passage ?? null,

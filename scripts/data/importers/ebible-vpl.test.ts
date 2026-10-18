@@ -33,7 +33,18 @@ describe('importEbibleVerseLines', () => {
     expect(file.verses.at(-1)).toBe('Text of REV 22:21.');
   });
 
-  it('drops the typographic marks these editions carry, keeping the wording', () => {
+  it('drops a pilcrow, which is only a paragraph mark', () => {
+    const file = importEbibleVerseLines(
+      createVerseLines((line) =>
+        line.startsWith('GEN 1:1 ') ? 'GEN 1:1 ¶ In the beginning was the Word.' : line,
+      ),
+      'kjv',
+      PROVENANCE,
+    );
+    expect(file.verses[0]).toBe('In the beginning was the Word.');
+  });
+
+  it('keeps the brackets around words the translators supplied', () => {
     const file = importEbibleVerseLines(
       createVerseLines((line) =>
         line.startsWith('GEN 1:1 ') ? 'GEN 1:1 ¶ In the beginning [was] the Word.' : line,
@@ -41,7 +52,53 @@ describe('importEbibleVerseLines', () => {
       'kjv',
       PROVENANCE,
     );
-    expect(file.verses[0]).toBe('In the beginning was the Word.');
+    // They mark the difference between what the source says and what English needed added, which
+    // is the translators' own statement about their work and not ours to drop.
+    expect(file.verses[0]).toBe('In the beginning [was] the Word.');
+  });
+
+  /**
+   * Colon spacing. The Bíblia Livre sets a psalm's superscription against its first words with
+   * no space, and removing the brackets around a stanza heading leaves the space on the wrong
+   * side of the colon. Both read as mistakes and neither is about the wording, so the colon
+   * keeps its place and only the space moves — which is a claim the attribution makes to
+   * readers, and so one worth holding to.
+   */
+  describe('colon spacing', () => {
+    const clean = (text: string) =>
+      importEbibleVerseLines(
+        createVerseLines((line) => (line.startsWith('GEN 1:1 ') ? `GEN 1:1 ${text}` : line)),
+        'kjv',
+        PROVENANCE,
+      ).verses[0];
+
+    it('puts a space after a colon that runs into the next word', () => {
+      expect(clean('Salmo de Davi:Ah SENHOR')).toBe('Salmo de Davi: Ah SENHOR');
+    });
+
+    it('moves a space that sits before a colon, brackets and all', () => {
+      expect(clean('[Guímel] :Trata bem')).toBe('[Guímel]: Trata bem');
+    });
+
+    it('leaves a colon that is already spaced exactly as it is', () => {
+      expect(clean('E disse Deus: Haja luz')).toBe('E disse Deus: Haja luz');
+    });
+
+    it('never touches a colon before a digit, so a time or a reference survives', () => {
+      expect(clean('às 3:16 da tarde')).toBe('às 3:16 da tarde');
+    });
+
+    it('never touches a colon before a bracket, which the KJV uses forty times', () => {
+      expect(clean('among their enemies:)')).toBe('among their enemies:)');
+      expect(clean('Olha isto:(diz ele')).toBe('Olha isto:(diz ele');
+    });
+
+    it('moves spaces and nothing else: no word is added, dropped or reordered', () => {
+      const source = 'Ela :Beije-me:com beijos:(assim) 1:2';
+      const cleaned = clean(source) ?? '';
+      const strip = (text: string) => text.replace(/\s+/g, '');
+      expect(strip(cleaned)).toBe(strip(source));
+    });
   });
 
   it('keeps omitted verses as empty text and reports them', () => {

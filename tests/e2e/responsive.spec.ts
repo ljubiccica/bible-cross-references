@@ -40,6 +40,42 @@ test.describe('the layout holds at every width', () => {
   }
 
   /**
+   * The same widths in every other language the app speaks.
+   *
+   * English is held to one line, above: it is the language the layout is designed around and the
+   * one most readers see. A translation cannot be held to that — Portuguese runs about a fifth
+   * longer, and the clause that pushes it over is the CC BY credit, which is a licence condition
+   * and not something to drop on a narrow screen. So the promise here is weaker and still worth
+   * keeping: never more than two lines, and never off the edge.
+   */
+  for (const width of WIDTHS) {
+    test(`${String(width)}px: a longer language wraps rather than overflowing`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('./?lang=pt');
+      await waitForApp(page);
+
+      const measured = await page.locator(`${ACTIVE} footer`).evaluate((footer) => {
+        const rect = footer.getBoundingClientRect();
+        const children = [...footer.children].map((child) => child.getBoundingClientRect());
+        return {
+          height: Math.round(rect.height),
+          right: Math.round(rect.right),
+          rows: new Set(children.map((child) => Math.round(child.top))).size,
+          widest: Math.round(Math.max(...children.map((child) => child.right))),
+        };
+      });
+
+      expect(measured.rows).toBeLessThanOrEqual(2);
+      // Two lines of the same 24px row, with a little room for the gap between them.
+      expect(measured.height).toBeLessThan(64);
+      expect(measured.right).toBeLessThanOrEqual(width);
+      expect(measured.widest).toBeLessThanOrEqual(width);
+    });
+  }
+
+  /**
    * The line is set in whatever UI font the reader's system has, and the narrowest and widest of
    * those differ by roughly a tenth: a layout that fits exactly on the machine that drew it can
    * wrap on somebody's phone, which is how a two-line footer at 320px once reached CI.

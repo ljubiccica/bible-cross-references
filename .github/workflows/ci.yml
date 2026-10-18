@@ -32,9 +32,11 @@ jobs:
         with:
           path: data/raw
           key: raw-data-${{ hashFiles('data/sources.json') }}
-      # Types, lint, formatting and the unit tests with their coverage thresholds (98% of
-      # statements, lines and functions — see vite.config.ts). Any one of them failing fails
-      # the job, and with it the pull request.
+      # Types, type coverage, lint, formatting and the unit tests with their coverage
+      # thresholds (98% of statements, lines and functions — see vite.config.ts). Type coverage
+      # is a separate gate from `tsc`: strict mode stops TypeScript inferring `any` quietly, but
+      # a value can still arrive as one from an untyped boundary and spread. Any of them failing
+      # fails the job, and with it the pull request.
       - run: npm run check
       - run: npm run build
       - name: Keep the built site for the end-to-end tests

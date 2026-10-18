@@ -64,6 +64,19 @@ const TRANSLATION_BUILDERS: Readonly<Record<TranslationId, DatasetBuilder>> = {
       });
     },
   },
+  blivre: {
+    outputPath: translationDatasetPath('blivre'),
+    build: async (readSource) => {
+      const { source, content } = await readSource('blivre');
+      const text = extractZipTextEntry(content, 'bliv-tr_vpl.txt');
+      return importEbibleVerseLines(text, 'blivre', {
+        ...provenanceOf(source),
+        // The translators ask that the edition's date always travel with the text, and the
+        // release this is pinned to is the February 2018 one.
+        snapshotDate: '2018-02-25',
+      });
+    },
+  },
 };
 
 /** One builder per cross-reference source. */

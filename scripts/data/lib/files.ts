@@ -37,6 +37,16 @@ export function extractZipTextEntry(archive: Uint8Array, entryName: string): str
   return strFromU8(entry);
 }
 
+/** Extracts one entry from a ZIP archive, as bytes. */
+export function extractZipEntry(archive: Uint8Array, entryName: string): Uint8Array {
+  const entries = unzipSync(archive, { filter: (file) => file.name === entryName });
+  const entry = entries[entryName];
+  if (!entry) {
+    throw new Error(`ZIP archive has no entry named "${entryName}".`);
+  }
+  return entry;
+}
+
 /** Removes a leading UTF-8 byte order mark, which some upstream text files include. */
 export function stripByteOrderMark(text: string): string {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { transformWithOxc, type Plugin } from 'vite';
+import { DATASET_SCHEMA_VERSION } from '../src/core/datasets/formats.ts';
 import { DATASETS_DIRECTORY } from '../src/core/datasets/paths.ts';
 import { vizDatasetPaths } from '../src/visualizations/shared/viz-datasets.ts';
 import { atEndOfHead, PAGES, pageOf, ROOT_DIR, SITE_NAME } from './site.ts';
@@ -120,6 +121,7 @@ export function offline(): Plugin {
         `const DATASETS = ${JSON.stringify(vizDatasetPaths())};`,
         `const DATA_DIRECTORY = ${JSON.stringify(DATASETS_DIRECTORY)};`,
         `const VERSION = ${JSON.stringify(version.digest('hex').slice(0, 16))};`,
+        `const SCHEMA_VERSION = ${JSON.stringify(DATASET_SCHEMA_VERSION)};`,
       ].join('\n');
       writeFileSync(resolve(outDir, 'sw.js'), `${injected}\n${worker.code}`);
     },
