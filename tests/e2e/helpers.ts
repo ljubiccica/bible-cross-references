@@ -73,8 +73,15 @@ export async function settle(page: Page): Promise<void> {
   });
   await page.waitForFunction(
     () => {
+      // Everything that *can* scroll, not everything that currently is. A scroll that has been
+      // asked for but has not started yet leaves every position at zero, and sampling only the
+      // non-zero ones would read that as "nothing is moving" and shoot before it began.
       const positions = [...document.querySelectorAll('*')]
-        .filter((element) => element.scrollTop !== 0 || element.scrollLeft !== 0)
+        .filter(
+          (element) =>
+            element.scrollHeight > element.clientHeight ||
+            element.scrollWidth > element.clientWidth,
+        )
         .map((element) => `${String(element.scrollTop)},${String(element.scrollLeft)}`)
         .join('|');
       const store = window as unknown as { __scrollSettle?: { at: string; count: number } };
