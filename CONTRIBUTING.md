@@ -44,34 +44,63 @@ verse of a chapter given without one')`, not `it('calls indexOf')`.
 
 ## Translations
 
-Two different jobs, and they are independent:
+Two different jobs, and they are independent.
 
-- **A language for the interface** — `src/i18n/`. Add the tag to `LOCALE_IDS` and the compiler
-  names every property that needs a value: an entry in `registry.ts`, and four new files under
-  `books/`, `genres/`, `install/` and `messages/`. The first three are complete or they do not
-  compile — all 66 books, all 10 genres, all three install platforms.
+### A language for the interface
 
-  Messages are the exception: the type is `Partial`, so a missing one falls back to English and
-  the compiler says nothing. A test does, though, and it **fails** rather than reporting — a
-  language the app offers should not be half in another one. To land a translation in stages,
-  put the tag in `WORK_IN_PROGRESS` in `src/i18n/i18n.test.ts` and take it out when the
-  catalogue is complete.
+Start with the scaffold, which writes every file a language needs, each of them still English:
 
-  Four more things the compiler cannot ask for: a wrap threshold in
-  `VizPage.module.css` and `controls.module.css` if the language runs longer than English (the
-  two must agree), a case in `tests/e2e/languages.spec.ts`, and the language's row in this file
-  and in the README.
+```sh
+npm run locale:new -- es
+```
 
-- **A Bible text** — a pinned source, a manifest and an importer entry. The one hard requirement
-  is verse numbering: the app indexes every verse by its position in the KJV's 31,102, so a
-  translation that numbers verses differently needs a mapping before it can be added. The
-  importer refuses a file that does not line up rather than silently showing the wrong verse, so
-  this fails loudly at build time, not quietly in front of a reader.
+Then add the language to the six files every language shares. The compiler names each one you
+miss, by file and by property:
+
+| File                           | What to add                                                           |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `src/i18n/locale-id.ts`        | the tag, in `LOCALE_IDS`                                              |
+| `src/i18n/locale-tags.ts`      | its BCP 47 tag and its name in itself                                 |
+| `src/i18n/registry.ts`         | the four scaffolded files, assembled into a locale                    |
+| `src/i18n/site-copy.ts`        | titles, descriptions, `noscript`, manifest, `hreflang`, share picture |
+| `src/i18n/books/acceptance.ts` | what a reader types, checked by somebody who reads the language       |
+| `src/i18n/same-as-english.ts`  | `{}` to start with                                                    |
+| `src/app/url-contract.test.ts` | a `SAVED` row for `?lang=<id>` and one for `/<id>/`                   |
+
+From there, work until `npm run check` is green. **Green means finished.** There is no
+half-finished state that ships: a language the app offers is a language a reader chooses, and
+choosing Spanish and getting English menus is worse than not being offered it. The English
+fallback in `translate.ts` is a safety net while you write, not a way to release.
+
+`src/i18n/completeness.test.ts` is what decides, and it names every remaining item one at a
+time — every message still in English, every blank, every book two books could answer to, every
+case the acceptance table has to pin. Work the list down.
+
+**The acceptance table is the part a compiler cannot do for you.** Everything else can be checked
+by machine; which book `Jo` means cannot. In Portuguese `Jo` is João and `Jó` is Job, one accent
+apart, and which one a reader reaches is decided by whichever claims the unaccented spelling —
+nothing in the build would notice if that changed hands. So each language carries the cases a
+native speaker signed off on, run through the real parser. CI tells you which spellings your
+language has to pin; a native speaker tells you what they should resolve to. Both are required.
+
+A few things no test can ask for: a wrap threshold in `VizPage.module.css` and
+`controls.module.css` if the language runs longer than English (the two must agree), and the
+language's row in this file and in the README.
+
+### A Bible text
+
+A pinned source, a manifest and an importer entry. The one hard requirement is verse numbering:
+the app indexes every verse by its position in the KJV's 31,102, so a translation that numbers
+verses differently needs a mapping before it can be added. The importer refuses a file that does
+not line up rather than silently showing the wrong verse, so this fails loudly at build time, not
+quietly in front of a reader.
+
+### Layout
 
 A new language should come with its layout checked, not only its words: translated text is often
 longer than English, and the header and footer are tight at 320px. `npm run test:e2e` walks twelve
 widths and insists the footer stays on one line with a font a tenth wider than the one it is
-measured on.
+measured on, and that no panel scrolls sideways in any language the app offers.
 
 ## Data and licences
 

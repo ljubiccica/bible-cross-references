@@ -5,6 +5,9 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+# The HTML entry of every language but the default one is generated from src/i18n/site-copy.ts by
+# vite/locale-entries.ts. Each generated directory carries its own .gitignore, so adding a
+# language needs no line here.
 
 # Data: the upstream files (data/raw/) are committed; the datasets built from them are not, since
 # `npm run dev` and `npm run build` rebuild them (see README.md → "Data").

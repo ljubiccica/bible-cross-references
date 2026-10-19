@@ -41,17 +41,28 @@ export interface StoredChoice {
  * one did, and the preload spent an extra 3.8 MB on every shared link that named a translation
  * before anyone noticed.
  *
- * The order is the address, then the reader's own stored choice, then their browser. The
- * translation is settled after the language because it falls back to the language's own Bible.
+ * The order is the page's own language, then the address, then the reader's own stored choice,
+ * then their browser. The translation is settled after the language because it falls back to the
+ * language's own Bible.
+ *
+ * The page's own language comes first because it is not a preference but a fact: a file served
+ * at `/pt/` was written in Portuguese, head and all, before anything here ran. Nothing below can
+ * change what a crawler or a link preview already read, so nothing below may change what the
+ * reader sees either.
  */
 export function initialChoice(
   params: URLSearchParams,
   stored: StoredChoice,
   languages: readonly string[],
+  pathLocale: LocaleId | null = null,
 ): InitialChoice {
   const storedLocale = stored.locale !== null && isLocaleId(stored.locale) ? stored.locale : null;
   const locale =
-    localeFromParams(params) ?? storedLocale ?? matchLocale(languages) ?? DEFAULT_LOCALE_ID;
+    pathLocale ??
+    localeFromParams(params) ??
+    storedLocale ??
+    matchLocale(languages) ??
+    DEFAULT_LOCALE_ID;
   const storedTranslation =
     stored.translation !== null && isTranslationId(stored.translation) ? stored.translation : null;
   const translation =

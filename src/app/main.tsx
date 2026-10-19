@@ -10,6 +10,7 @@ import {
   setPreferredLocale,
 } from '../i18n/locale-choice.ts';
 import { getLocale } from '../i18n/registry.ts';
+import { localeFromPath } from '../i18n/locale-path.ts';
 import { initialChoice } from './initial-choice.ts';
 import { LOCALE_PREFERENCE, TRANSLATION_PREFERENCE } from '../shared/lib/preference-keys.ts';
 import { readPreference } from '../shared/lib/preferences.ts';
@@ -28,6 +29,8 @@ const { locale, translation } = initialChoice(
     translation: readPreference(TRANSLATION_PREFERENCE),
   },
   navigator.languages,
+  // The language of the file that was served, which the build baked into its path and its head.
+  localeFromPath(url.pathname, import.meta.env.BASE_URL),
 );
 setActiveLocale(locale);
 // Kept apart from the one above: this is the reader's own language, which an address naming

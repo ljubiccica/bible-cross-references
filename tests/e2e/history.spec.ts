@@ -15,6 +15,15 @@ function query(page: Page): string {
   return new URL(page.url()).search;
 }
 
+/**
+ * The path, which is where a language other than the default lives: `/bible-cross-references/pt/`.
+ * Back and Forward move this too, and for a language it is the half that matters — the file
+ * served at that path is the Portuguese one, title, description and preview card included.
+ */
+function path(page: Page): string {
+  return new URL(page.url()).pathname;
+}
+
 /** The language picker lives inside the translation menu, so the menu has to be open first. */
 async function chooseLanguage(page: Page, value: string): Promise<void> {
   await page
@@ -40,7 +49,10 @@ test.describe('browser history', () => {
 
     await page.goBack();
     await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR');
-    expect(query(page)).toContain('lang=pt');
+    // The entry was made from a `?lang=pt` link, which the app moves into the path on arrival,
+    // so this is the address Back returns to. The language is still named, just not in the query.
+    expect(path(page)).toContain('/pt/');
+    expect(query(page)).toContain('ref=John.3.16');
     await expect(page.locator(ACTIVE).getByRole('button', { name: /Filtros/ })).toBeVisible();
     // And the Bible comes back with the language. `html[lang]` and the words are set by two
     // different statements, and the Bible by a third — asserting only the first would pass on an

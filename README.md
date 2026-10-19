@@ -96,12 +96,27 @@ that installed the app has already done the work.
 
 ## Languages
 
-The app speaks English and Portuguese. Which it speaks is settled in this order: the address
-(`?lang=pt`), then the reader's last choice, then what their browser asks for, then English. On a
-first visit the Bible follows the interface — a browser asking for Portuguese arrives at the
-Bíblia Livre without being asked — and after that the two are independent, so a Portuguese
-interface can read an English text, or the other way round. Both are chosen in one menu, because
-the header has no room for a sixth button.
+The app speaks English and Portuguese. Each has pages of its own: English at the root, every other
+language one path segment down
+([`/pt/`](https://trekhleb.dev/bible-cross-references/pt/?t=blivre)). Which language a visit
+speaks is settled in this order: the page's own path, then the address (`?lang=pt`), then the
+reader's last choice, then what their browser asks for, then English. On a first visit the Bible
+follows the interface — a browser asking for Portuguese arrives at the Bíblia Livre without being
+asked — and after that the two are independent, so a Portuguese interface can read an English
+text, or the other way round. Both are chosen in one menu, because the header has no room for a
+sixth button.
+
+The path comes first because it is not a preference but a fact: the file served at `/pt/` was
+written in Portuguese — its title, its description, its `og:` tags and its `lang` — before any
+script ran. That is what a crawler reads and what WhatsApp, Facebook and every other link preview
+reads, and none of them runs JavaScript. A static host serves one file per path and nothing per
+query, so a path is the only thing that can select it.
+
+Links shared before this existed name their language in the query, and keep working exactly as
+they did: `?lang=pt` is pinned in [`src/app/url-contract.test.ts`](src/app/url-contract.test.ts)
+and will not be taken away. Opening one quietly rewrites the address bar to `/pt/` — nothing
+else about it is touched, tracking parameters and fragment included — so the link the reader
+copies next is the one that previews in Portuguese.
 
 Everything the interface says lives in [`src/i18n/`](src/i18n/):
 
@@ -113,9 +128,10 @@ src/i18n/install/    the install steps, which are rich text and name real browse
 ```
 
 English is written `as const`, and `Messages` is derived from it, so a locale that misspells a key
-or gives a value the wrong shape does not compile. A locale may leave a key out — the English word
-is used instead, so a half-finished translation still ships something useful — and a test reports
-what is missing. Messages that take values are small functions rather than strings with
+or gives a value the wrong shape does not compile. A locale may leave a key out at run time — the
+English word is used instead, which is what keeps a catalogue being written from crashing — but
+not in a language the app offers: [`completeness.test.ts`](src/i18n/completeness.test.ts) **fails**
+on anything missing, blank, or still in English. Messages that take values are small functions rather than strings with
 placeholders: the compiler then checks the arguments, and each language can order its words and
 count its plurals its own way (`Intl.PluralRules` is in the platform for the languages that need
 three or more forms).
@@ -125,18 +141,38 @@ the accent is the whole difference between two books: `Jo` is the usual abbrevia
 `Jó` is Job. Typing without accents still works everywhere it is unambiguous — `genesis` finds
 Gênesis, `josue` finds Josué.
 
-**To add a language:** add its tag to `LOCALE_IDS` in `src/i18n/locale-id.ts`, and the compiler
-will name every file that needs an entry. The Bible text is a separate job — see
-[Data](#data) — and neither waits on the other: a language can have an interface with no Bible of
-its own, which is the right answer where no translation can be licensed.
+**To add a language:** run `npm run locale:new -- es`, which writes every file it needs, then add
+it to the six shared files the compiler names. Work until `npm run check` is green — the gate
+lists what is left one item at a time, and green means finished, with no half-translated state
+that ships. [CONTRIBUTING.md](CONTRIBUTING.md#translations) walks through it. The Bible text is a
+separate job — see [Data](#data) — and neither waits on the other: a language can have an
+interface with no Bible of its own, which is the right answer where no translation can be
+licensed.
 
-Some things stay in English whatever the reader's language. The `/debug/` page is one, because
-it is for whoever is working on the data. The rest come from the page being static HTML with one
-copy per view: the installed app's name, which a web manifest has only one of, and everything a
-reader never sees but a crawler does — the `<meta name="description">`, `og:locale`, the
-structured data's `inLanguage`, and the `<noscript>` text. A Portuguese link shared on a social
-network therefore previews in English, even though the page itself opens in Portuguese. The
-`lang` attribute and the document title are both corrected before the first paint.
+Everything a reader never sees but a crawler does is written per language at build time, from
+[`src/i18n/site-copy.ts`](src/i18n/site-copy.ts): the title, the description, `og:locale`, the
+structured data's `inLanguage`, the `<noscript>` text, the share picture and its alt text, and a
+web manifest of its own, so installing from `/pt/` installs an app that opens in Portuguese.
+Every language of a page names every other with `hreflang`, reciprocally, and the English one is
+also `x-default`.
+
+`sitemap.xml` lists all of them with their alternates, and `robots.txt` is written beside it —
+but a `robots.txt` is only read at a **domain's** root, and this site is served from a
+sub-path of one. The published file is therefore inert here (it becomes the real thing under
+`BASE_PATH=/`), so for the sitemap to be found one of these has to happen outside this
+repository: either `Sitemap: https://trekhleb.dev/bible-cross-references/sitemap.xml` is added
+to the root `robots.txt` of trekhleb.dev, or the sitemap is submitted directly in Search
+Console, which needs no `robots.txt` at all. Until then the pages are discovered only by being
+linked to.
+
+The `/debug/` page stays in English whatever the reader's language, because it is for whoever is
+working on the data, and it is `noindex`.
+
+The Portuguese share picture is still the English one under a Portuguese name
+(`social-preview.pt.jpg`), marked `placeholder: true` where it is declared. The URL is already
+the final one, so the real picture can replace it without a single shared link changing — but a
+link shared before that happens caches the English card on WhatsApp and Facebook, so it is worth
+drawing before any of this is promoted.
 
 ## Data
 
