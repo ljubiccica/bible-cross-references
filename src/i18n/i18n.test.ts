@@ -74,8 +74,10 @@ describe('the message catalogues', () => {
 
   it('counts in the language’s own way, singular and plural', () => {
     const more = message(getLocale('pt'), 'panel.moreVerses');
-    expect(more('1', 1)).toContain('1 versículo');
-    expect(more('3', 3)).toContain('3 versículos');
+    // `toBe`, not `toContain`: `'+ 1 versículos'` contains `'1 versículo'`, so the substring
+    // form passed just as happily on a message that had no singular at all.
+    expect(more('1', 1)).toBe('+ 1 versículo');
+    expect(more('3', 3)).toBe('+ 3 versículos');
   });
 
   /**

@@ -143,8 +143,10 @@ Gênesis, `josue` finds Josué.
 
 **To add a language:** run `npm run locale:new -- es`, which writes every file it needs, then add
 it to the six shared files the compiler names. Work until `npm run check` is green — the gate
-lists what is left one item at a time, and green means finished, with no half-translated state
-that ships. [CONTRIBUTING.md](CONTRIBUTING.md#translations) walks through it. The Bible text is a
+lists what is left one item at a time, and nothing half-translated ships. Green means every slot
+is filled with something real, not that the words are right: what it cannot check, and what a
+reviewer who reads the language still has to, is in
+[CONTRIBUTING.md](CONTRIBUTING.md#what-the-gate-cannot-check-and-what-a-reviewer-still-has-to). [CONTRIBUTING.md](CONTRIBUTING.md#translations) walks through it. The Bible text is a
 separate job — see [Data](#data) — and neither waits on the other: a language can have an
 interface with no Bible of its own, which is the right answer where no translation can be
 licensed.

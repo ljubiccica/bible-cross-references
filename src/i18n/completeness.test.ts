@@ -4,6 +4,7 @@ import {
   crossLocaleProblems,
   describeProblems,
   localeProblems,
+  SAME_AS_ENGLISH_MAX,
   unusedAllowances,
   MINIMUM_ACCEPTANCE_CASES,
   resolve,
@@ -78,6 +79,29 @@ describe('every language the app offers is finished', () => {
   it('gives each language its own hreflang, picture, name and endonym', () => {
     const problems = crossLocaleProblems(LOCALE_IDS.map(bundleFor));
     expect(problems, describeProblems('languages', problems)).toEqual([]);
+  });
+
+  it('notices a language that is a copy of another language', () => {
+    // The hole this closes: everything else compares a language with English, so a Portuguese
+    // catalogue filed under `es` is measured against English, found different, and passes.
+    const pt = bundleFor('pt');
+    const clone = { ...pt, id: 'es' };
+    const problems = crossLocaleProblems([bundleFor('en'), pt, clone]);
+    expect(problems.some(({ detail }) => detail.includes('a copy of the other'))).toBe(true);
+    expect(problems.some(({ key }) => key === 'pt/es')).toBe(true);
+    // And the real pair is nowhere near the threshold.
+    expect(crossLocaleProblems([bundleFor('en'), pt])).toEqual([]);
+  });
+
+  it('refuses to let a language keep everything in English by allowlisting it', () => {
+    const everything = Object.fromEntries(
+      Array.from({ length: SAME_AS_ENGLISH_MAX + 1 }, (_value, index) => [
+        `messages.key${String(index)}`,
+        'Spanish writes this exactly as English does.',
+      ]),
+    );
+    const problems = localeProblems({ ...bundleFor('pt'), sameAsEnglish: everything });
+    expect(problems.some(({ where }) => where === 'sameAsEnglish')).toBe(true);
   });
 
   it('explains every word it lets a language keep in English', () => {
@@ -346,11 +370,43 @@ describe('the gate catches a language that is not finished', () => {
     );
   });
 
+  it('a message with no singular, where English has one', () => {
+    // `+ 1 versículos`. Not blank, not English, prints its argument — it passed everything
+    // until the forms were compared against English's.
+    const problems = problemsOf({
+      messages: {
+        ...sound.messages,
+        'panel.moreVerses': (count: string) => `+ ${count} versículos`,
+      },
+    });
+    expect(found(problems, 'messages', 'panel.moreVerses')?.detail).toContain(
+      'the same for one as for many',
+    );
+  });
+
   it('a message that produces nothing at all', () => {
     const problems = problemsOf({
       messages: { ...sound.messages, 'stats.verses': () => [] },
     });
     expect(found(problems, 'messages', 'stats.verses')?.detail).toBe('produced nothing');
+  });
+
+  it('an identity dodge that changes nothing a reader can see', () => {
+    // Each of these used to pass: a value is "different from English" by one invisible
+    // character and entirely untranslated.
+    for (const dodge of ['Close ', 'Close\u200b', 'Close\u00a0', 'CLOSE', ' close ']) {
+      const problems = problemsOf({ messages: { ...sound.messages, 'panel.close': dodge } });
+      expect(found(problems, 'messages', 'panel.close')?.detail, JSON.stringify(dodge)).toContain(
+        'still the English words',
+      );
+    }
+  });
+
+  it('a book with no short form, which would be labelled by its English OSIS id', () => {
+    const withoutShortForm = { ...sound.books.Matt };
+    delete withoutShortForm.abbreviation;
+    const problems = problemsOf({ books: { ...sound.books, Matt: withoutShortForm } });
+    expect(found(problems, 'books', 'Matt')?.detail).toContain('English OSIS id');
   });
 
   it('a book abbreviation or alias left blank', () => {
@@ -473,17 +529,20 @@ describe('the gate catches a language that is not finished', () => {
     // Every message, every book and every genre is reported, so nothing is silently accepted.
     const where = (name: string) => problems.filter((problem) => problem.where === name).length;
     expect(where('messages')).toBeGreaterThan(100);
-    expect(where('books')).toBe(66);
+    // A name left in English for each, and a short form missing for each: English itself needs
+    // none, so a language that copied it has sixty-six books labelled by their OSIS ids.
+    expect(where('books')).toBe(132);
     expect(where('genres')).toBe(10);
   });
 
   /**
-   * The unaccented spelling has to be pinned by itself.
+   * The unaccented spelling has to be pinned, and the requirement cannot be edited away.
    *
-   * This used to pass with only `Jó 1:1` present, because coverage was measured on the folded
-   * spelling and `Jó` folds to `jo` as well. That left the one case that matters unpinned: `Jo`
-   * is the one whose owner nothing else in the build decides, so dropping it and then changing
-   * João's abbreviation turned `Jo 3:16` into Job with the whole suite green.
+   * Two earlier versions of this rule both had the same hole. Measuring coverage on the folded
+   * spelling let `Jó 1:1` stand in for `Jo 3:16`. Deriving the requirement from which spellings
+   * two books currently compete for was worse, because the very edit that breaks `Jo` — taking
+   * it away from João — is the edit that ends the competition, so the demand vanished exactly
+   * when it was needed. It is derived from each book's own accents now, and accents do not move.
    */
   it('a language whose accents hide a book, with the unaccented spelling left unpinned', () => {
     const withoutUnaccented = sound.acceptance.filter((entry) => entry.typed !== 'Jo 3:16');
@@ -491,25 +550,76 @@ describe('the gate catches a language that is not finished', () => {
     expect(withoutUnaccented.some((entry) => entry.typed === 'Jó 1:1')).toBe(true);
     expect(
       found(problemsOf({ acceptance: withoutUnaccented }), 'acceptance', 'jo')?.detail,
-    ).toContain('Add a case typing “jo” itself');
+    ).toContain('typed “jo” without its accent');
 
-    // Why requiring the row is the whole protection: once João stops claiming `jo`, the two
-    // books no longer collide at all, so there is nothing left for the gate to demand a case
-    // for — and a table without `Jo 3:16` would then have nothing to say about it either.
+    // And the demand survives the edit that used to make it disappear: once João stops claiming
+    // `jo` the two books no longer compete, but `Jó` is still spelled with an accent, so a case
+    // typing `jo` is still required — and the one in the table now fails, which is the point.
     const books = {
       ...sound.books,
       John: { ...sound.books.John, abbreviation: 'Joa', aliases: ['joao'] },
     };
-    expect(resolve('Jo 3:16', books)).toBe('Job.3.16');
     expect(contestedSpellings(books)).toEqual([]);
+    expect(resolve('Jo 3:16', books)).toBe('Job.3.16');
     expect(
-      localeProblems({ ...sound, acceptance: withoutUnaccented, books }).some(
-        ({ where }) => where === 'acceptance',
-      ),
-    ).toBe(false);
-    // So the row has to be there, and while it is, the change is caught the moment it is made.
+      found(problemsOf({ acceptance: withoutUnaccented, books }), 'acceptance', 'jo')?.detail,
+    ).toContain('typed “jo” without its accent');
     expect(
       localeProblems({ ...sound, books }).find(({ where }) => where === 'acceptance')?.detail,
     ).toBe('expected John.3.16, got Job.3.16');
+  });
+
+  it('an acceptance table that counts but checks nothing', () => {
+    // Six rows, all about John, which used to satisfy the minimum on count alone.
+    const repeated: readonly AcceptanceCase[] = [
+      { typed: 'Jo 3:16', expect: 'John.3.16', note: 'x' },
+      { typed: 'Jo 3:17', expect: 'John.3.17', note: 'x' },
+      { typed: 'Jo 3:18', expect: 'John.3.18', note: 'x' },
+      { typed: 'Jo 1:1', expect: 'John.1.1', note: 'x' },
+      { typed: 'Jo 1:2', expect: 'John.1.2', note: 'x' },
+      { typed: 'Jo 1:3', expect: 'John.1.3', note: 'x' },
+    ];
+    const problems = problemsOf({ acceptance: repeated });
+    expect(problems.some(({ detail }) => detail.includes('different books'))).toBe(true);
+  });
+
+  it('the same acceptance case written twice', () => {
+    const [first] = sound.acceptance;
+    expect(first).toBeDefined();
+    const acceptance: readonly AcceptanceCase[] = first
+      ? [...sound.acceptance, first]
+      : sound.acceptance;
+    expect(found(problemsOf({ acceptance }), 'acceptance', first?.typed ?? '')?.detail).toBe(
+      'the same case twice',
+    );
+  });
+
+  it('a language freshly scaffolded, where nothing has been translated yet', () => {
+    const problems = localeProblems({
+      ...sound,
+      id: 'xx',
+      messages: sound.english.messages,
+      books: sound.english.books,
+      genres: sound.english.genres,
+      install: sound.english.install,
+      site: sound.english.site,
+      acceptance: [],
+      sameAsEnglish: {},
+    });
+    // Named one by one, not just counted: the report is what a contributor works through.
+    const report = describeProblems('xx', problems);
+    expect(report).toContain('messages.app.name');
+    expect(report).toContain('books.Gen.name');
+    expect(report).toContain('genres.law');
+    expect(report).toContain('install.ios.label');
+    expect(report).toContain('site.main.title');
+    expect(report).toContain('acceptance.xx');
+    // Every message, every book and every genre is reported, so nothing is silently accepted.
+    const where = (name: string) => problems.filter((problem) => problem.where === name).length;
+    expect(where('messages')).toBeGreaterThan(100);
+    // A name left in English for each, and a short form missing for each: English itself needs
+    // none, so a language that copied it has sixty-six books labelled by their OSIS ids.
+    expect(where('books')).toBe(132);
+    expect(where('genres')).toBe(10);
   });
 });

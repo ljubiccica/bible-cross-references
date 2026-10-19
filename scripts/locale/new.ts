@@ -123,5 +123,6 @@ Then:
   npm run build               writes ${id}/index.html and ${id}/threads/index.html
   npm run test:e2e            opens /${id}/ in a real browser
 
-Green means finished. See CONTRIBUTING.md → "Adding a language".
+Green means every slot is filled with something real — not that the words are right. A reviewer
+who reads the language is still required: see CONTRIBUTING.md → "Adding a language".
 `);

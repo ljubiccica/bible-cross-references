@@ -87,6 +87,31 @@ A few things no test can ask for: a wrap threshold in `VizPage.module.css` and
 `controls.module.css` if the language runs longer than English (the two must agree), and the
 language's row in this file and in the README.
 
+### What the gate cannot check, and what a reviewer still has to
+
+Green means every slot is filled with something that is not blank, not the English words, not
+another language's catalogue, and not a stub — and that the addresses, the metadata and the
+reference parsing all still hold. It does not mean the translation is _good_. A reviewer who
+reads the language is still the only thing standing between these and a reader:
+
+- **Whether the words are right.** `'Fechar'` and `'Abrir'` are both valid Portuguese and only
+  one of them means Close. Nothing here can tell them apart.
+- **Whether a message is a sentence.** A translation built only out of its arguments —
+  `(shown, total) => \`${shown}${total}\`` — is not blank, not English, and prints everything it
+  was given, so it passes. So does one that puts its arguments in the wrong order.
+- **Whether an acceptance row says the right thing.** The rows are checked against the real
+  parser, so they catch a change in behaviour — but a pull request can edit a row and the
+  behaviour it pins in the same breath. A row is a native speaker's claim; CI only keeps the
+  claim honest once it is made.
+- **The install steps.** Only each device's name is compared. The steps themselves are rich text
+  naming real buttons, and a translator has to check them against their own phone.
+- **The share picture.** CI checks that it exists, has its own URL, is the declared size and
+  says whether it is a stand-in. Nothing can read the words drawn on it.
+
+A Bible text is checked far more loosely than a language: the registry forces the bookkeeping,
+and the verse numbering is enforced when the dataset is built, but the licence, the attribution
+and the reading direction are taken on trust. Read those by hand.
+
 ### A Bible text
 
 A pinned source, a manifest and an importer entry. The one hard requirement is verse numbering:

@@ -82,5 +82,35 @@ export const BOOK_ACCEPTANCE: Readonly<Record<LocaleId, readonly AcceptanceCase[
     { typed: 'Tiago 1:1', expect: 'Jas.1.1', note: 'A name that shares nothing with the English.' },
     { typed: 'Jz 5', expect: 'Judg.5', note: 'An abbreviation of an accented name (Juízes).' },
     { typed: 'Apocalipse 22:21', expect: 'Rev.22.21', note: 'The last verse of the Bible.' },
+
+    // Every accented name and abbreviation, typed the way a phone keyboard produces it. The
+    // gate requires one of these per accented spelling: it is the only way the unaccented form
+    // is pinned to a book at all, and it has to hold whether or not two books happen to
+    // compete for it today.
+    { typed: 'ex 1:1', expect: 'Exod.1.1', note: 'Êx, typed without its accent.' },
+    { typed: 'levitico 1:1', expect: 'Lev.1.1', note: 'Levítico, typed without its accent.' },
+    { typed: 'numeros 1:1', expect: 'Num.1.1', note: 'Números, typed without its accent.' },
+    {
+      typed: 'deuteronomio 1:1',
+      expect: 'Deut.1.1',
+      note: 'Deuteronômio, typed without its accent.',
+    },
+    { typed: 'juizes 1:1', expect: 'Judg.1.1', note: 'Juízes, typed without its accent.' },
+    { typed: '1cronicas 1:1', expect: '1Chr.1.1', note: '1 Crônicas, typed without its accent.' },
+    { typed: '2cronicas 1:1', expect: '2Chr.1.1', note: '2 Crônicas, typed without its accent.' },
+    { typed: 'proverbios 1:1', expect: 'Prov.1.1', note: 'Provérbios, typed without its accent.' },
+    { typed: 'canticos 1:1', expect: 'Song.1.1', note: 'Cânticos, typed without its accent.' },
+    { typed: 'isaias 1:1', expect: 'Isa.1.1', note: 'Isaías, typed without its accent.' },
+    { typed: 'lamentacoes 1:1', expect: 'Lam.1.1', note: 'Lamentações, typed without its accent.' },
+    { typed: 'amos 1:1', expect: 'Amos.1.1', note: 'Amós, typed without its accent.' },
+    { typed: '1corintios 1:1', expect: '1Cor.1.1', note: '1 Coríntios, typed without its accent.' },
+    { typed: '2corintios 1:1', expect: '2Cor.1.1', note: '2 Coríntios, typed without its accent.' },
+    { typed: 'galatas 1:1', expect: 'Gal.1.1', note: 'Gálatas, typed without its accent.' },
+    { typed: 'efesios 1:1', expect: 'Eph.1.1', note: 'Efésios, typed without its accent.' },
+    { typed: '1timoteo 1:1', expect: '1Tim.1.1', note: '1 Timóteo, typed without its accent.' },
+    { typed: '2timoteo 1:1', expect: '2Tim.1.1', note: '2 Timóteo, typed without its accent.' },
+    { typed: '1joao 1:1', expect: '1John.1.1', note: '1 João, typed without its accent.' },
+    { typed: '2joao 1:1', expect: '2John.1.1', note: '2 João, typed without its accent.' },
+    { typed: '3joao 1:1', expect: '3John.1.1', note: '3 João, typed without its accent.' },
   ],
 };
