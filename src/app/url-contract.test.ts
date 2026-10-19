@@ -2,10 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { GENRES } from '../core/bible/genres.ts';
 import { toPassageOsisId } from '../core/bible/passage.ts';
 import { KJV_VERSIFICATION as kjv } from '../core/bible/versification.ts';
-import { LOCALE_IDS } from '../i18n/locale-id.ts';
+import { LOCALE_IDS, type LocaleId } from '../i18n/locale-id.ts';
 import { TRANSLATION_MANIFESTS, DEFAULT_TRANSLATION_ID } from '../translations/registry.ts';
-import { VOTE_THRESHOLDS } from '../visualizations/shared/link-filter.ts';
-import { explorerUrl, parseExplorerUrl, type ViewRoute } from './explorer-location.ts';
+import { DEFAULT_LINK_FILTER, VOTE_THRESHOLDS } from '../visualizations/shared/link-filter.ts';
+import { defaultTranslationFor } from '../translations/default-for-locale.ts';
+import {
+  explorerUrl,
+  parseExplorerUrl,
+  plainLocaleFor,
+  type ViewRoute,
+} from './explorer-location.ts';
 
 /**
  * The URL is this app's only saved state, and readers share it: a link to a verse goes into a
@@ -34,14 +40,17 @@ interface UrlState {
   readonly locale: string;
 }
 
-function read(url: string, base = BASE): UrlState {
+function read(url: string, base = BASE, preferredLocale: LocaleId = 'en'): UrlState {
   const location = parseExplorerUrl(
     new URL(url, 'https://trekhleb.dev'),
     base,
     ROUTES,
     kjv,
-    DEFAULT_TRANSLATION_ID,
-    'en',
+    // The same resolver the app uses, so a URL naming a language means that language's Bible
+    // here too. Hard-coding the default instead made this file assert that `?lang=pt` shows the
+    // English text, which is not what a reader sees.
+    defaultTranslationFor,
+    preferredLocale,
   );
   return {
     view: location.view,
@@ -128,7 +137,8 @@ const SAVED: readonly (readonly [string, Partial<UrlState>])[] = [
   ['/bible-cross-references/?t=blivre', { translation: 'blivre' }],
 
   // The language.
-  ['/bible-cross-references/?lang=pt', { locale: 'pt' }],
+  // The Portuguese Bible comes with the Portuguese interface for a reader who chose neither.
+  ['/bible-cross-references/?lang=pt', { locale: 'pt', translation: 'blivre' }],
   ['/bible-cross-references/?lang=en', { locale: 'en' }],
 
   // Everything at once, in both orders a URL can carry them.
@@ -196,13 +206,97 @@ describe('a URL the app builds reads back as itself', () => {
       BASE,
       ROUTES,
       kjv,
-      DEFAULT_TRANSLATION_ID,
+      defaultTranslationFor,
       'en',
     );
     const route = ROUTES.find((candidate) => candidate.id === location.view) ?? ROUTES[0];
     // `null` keeps the translation in the URL whatever it is, which is what a shared link needs.
-    const rebuilt = explorerUrl(route, location, BASE, kjv, null);
+    const rebuilt = explorerUrl(route, location, BASE, kjv, null, null);
     expect(read(rebuilt)).toEqual(state);
+  });
+});
+
+/**
+ * The other half of the contract: what the app *writes*.
+ *
+ * Reading back what we just wrote only proves the two halves agree with each other. It passes
+ * just as happily if every emitted URL grows a redundant parameter or changes its spelling —
+ * and because the offline cache means a sizeable share of readers are still running the previous
+ * release, a silently changed emission format produces links the deployed app cannot read. So
+ * these are pinned as literals: if one changes, say why.
+ */
+describe('the URLs the app emits', () => {
+  const HOME = ROUTES[0];
+  const place = (over: Partial<Parameters<typeof explorerUrl>[1]> = {}) => ({
+    passage: null,
+    filter: DEFAULT_LINK_FILTER,
+    translation: DEFAULT_TRANSLATION_ID,
+    locale: 'en' as LocaleId,
+    ...over,
+  });
+
+  it('leaves a plain link plain', () => {
+    expect(explorerUrl(HOME, place(), BASE, kjv)).toBe(BASE);
+  });
+
+  it('names a passage', () => {
+    const passage = { kind: 'chapter', book: 'Isa', chapter: 53 } as const;
+    expect(explorerUrl(HOME, place({ passage }), BASE, kjv)).toBe(`${BASE}?ref=Isa.53`);
+  });
+
+  it('omits the language a reader would land on anyway, and keeps one they would not', () => {
+    // The whole point of `plainLocaleFor`: for a reader whose own language is English, `?lang=en`
+    // is noise; for a reader whose own language is Portuguese, dropping it changes what the link
+    // means — they would reopen it in Portuguese.
+    expect(
+      explorerUrl(HOME, place({ locale: 'en' }), BASE, kjv, DEFAULT_TRANSLATION_ID, 'en'),
+    ).toBe(BASE);
+    expect(
+      explorerUrl(HOME, place({ locale: 'en' }), BASE, kjv, DEFAULT_TRANSLATION_ID, null),
+    ).toBe(`${BASE}?lang=en`);
+    expect(
+      explorerUrl(HOME, place({ locale: 'pt' }), BASE, kjv, DEFAULT_TRANSLATION_ID, 'en'),
+    ).toBe(`${BASE}?lang=pt`);
+  });
+
+  it('keeps the whole state in the order readers have in their bookmarks', () => {
+    const passage = { kind: 'chapter', book: 'Isa', chapter: 53 } as const;
+    expect(
+      explorerUrl(
+        ROUTES[1],
+        place({
+          passage,
+          translation: 'kjv',
+          locale: 'pt',
+          filter: { minVotes: 10, hiddenGenres: new Set(['law', 'acts'] as const) },
+        }),
+        BASE,
+        kjv,
+        null,
+        null,
+      ),
+    ).toBe(`${BASE}threads/?ref=Isa.53&t=kjv&lang=pt&votes=10&hide=law,acts`);
+  });
+});
+
+describe('an explicit language survives the app rebuilding the address', () => {
+  it("does not quietly revert to the reader's own language", () => {
+    // A Portuguese reader opens an English link and clicks one verse. Before `plainLocaleFor`,
+    // `lang=en` was dropped here and the next read filled the gap from their own preference, so
+    // the interface turned Portuguese under them.
+    const link = `${BASE}?lang=en&ref=John.3.16`;
+    const opened = parseExplorerUrl(
+      new URL(link, 'https://trekhleb.dev'),
+      BASE,
+      ROUTES,
+      kjv,
+      defaultTranslationFor,
+      'pt',
+    );
+    expect(opened.locale).toBe('en');
+    const rebuilt = explorerUrl(ROUTES[0], opened, BASE, kjv, null, plainLocaleFor('pt'));
+    expect(rebuilt).toContain('lang=en');
+    expect(read(rebuilt, BASE, 'pt').locale).toBe('en');
   });
 });
 
@@ -239,11 +333,19 @@ describe('a hostile URL cannot reach the page', () => {
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
   });
 
-  it('reads an absurdly long parameter without hanging', () => {
-    // The book group's nested quantifiers are quadratic, so a long run of letters is the shape
-    // that would show it. A tenth of a second is far below anything a reader would notice.
+  it.each([
+    ['a long run of letters', 'a'.repeat(50_000)],
+    // The shape that actually backtracks. The book group is `[letters…]*?` followed by `\\s*`,
+    // and both can match a space, so a run of them is quadratic: measured at ~270ms for 20k and
+    // ~2s for 50k against the pattern directly. `?ref=` is read by the OSIS parser rather than
+    // this one, and the search box is capped — but the cap is the only thing standing here, so
+    // this pins the cost rather than trusting that nobody ever removes it.
+    ['a long run of spaces', `a${' '.repeat(50_000)}x`],
+    ['spaces and dots', `a${' .'.repeat(20_000)}x`],
+    ['a long run of digits', '9'.repeat(50_000)],
+  ])('reads %s without hanging', (_name, value) => {
     const started = performance.now();
-    expect(read(`/bible-cross-references/?ref=${'a'.repeat(50_000)}`)).toEqual(DEFAULTS);
+    expect(read(`/bible-cross-references/?ref=${encodeURIComponent(value)}`)).toEqual(DEFAULTS);
     expect(performance.now() - started).toBeLessThan(2000);
   });
 

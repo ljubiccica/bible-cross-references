@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ValidationError } from '../../core/lib/validation.ts';
 import { DatasetUnavailableError, fetchDataset, loadDataset, measure } from './fetch-dataset.ts';
 
 function respondWith(body: string, init: ResponseInit = {}): void {
@@ -79,21 +80,43 @@ describe('measure', () => {
 });
 
 describe('loadDataset', () => {
-  /** A cache store that records what was deleted, standing in for the offline cache. */
-  function stubCaches(): { readonly deleted: string[] } {
-    const deleted: string[] = [];
+  /** A cache store that records what was deleted and what was put back. */
+  function stubCaches(seed: string | null = '{"old":true}') {
+    const store = new Map<string, Response>();
+    if (seed !== null) {
+      store.set(`${import.meta.env.BASE_URL}data/thing.json`, new Response(seed));
+    }
+    const log: string[] = [];
     vi.stubGlobal('caches', {
-      keys: () => Promise.resolve(['bible-cross-references-data-v1']),
-      open: () =>
+      keys: () => Promise.resolve(['bible-cross-references-data-v1', 'someone-elses-cache']),
+      open: (name: string) =>
         Promise.resolve({
+          match: (url: string) =>
+            Promise.resolve(name.startsWith('bible-cross-references') ? store.get(url) : undefined),
           delete: (url: string) => {
-            deleted.push(url);
+            if (!name.startsWith('bible-cross-references') || !store.has(url)) {
+              return Promise.resolve(false);
+            }
+            store.delete(url);
+            log.push(`delete ${name}`);
             return Promise.resolve(true);
+          },
+          put: (url: string, response: Response) => {
+            store.set(url, response);
+            log.push(`put ${name}`);
+            return Promise.resolve();
           },
         }),
     });
-    return { deleted };
+    return { log, store };
   }
+
+  const unreadable = (json: unknown) => {
+    if (!(typeof json === 'object' && json !== null && 'new' in json)) {
+      throw new ValidationError('shape', 'this release needs the new shape');
+    }
+    return json;
+  };
 
   it('returns the parsed value and the time spent on it', async () => {
     respondWith('{"n":1}');
@@ -106,32 +129,80 @@ describe('loadDataset', () => {
     // The shape of a deployment: the offline cache still holds the previous release's file, and
     // the network has the new one. Without the retry this is a broken load for every reader who
     // has the app installed.
-    const { deleted } = stubCaches();
+    const { log } = stubCaches();
+    const bodies = ['{"old":true}', '{"new":true}'];
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(new Response(bodies.shift() ?? '{}', { status: 200 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { value } = await loadDataset('data/thing.json', unreadable);
+
+    expect(value).toEqual({ new: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(log).toEqual(['delete bible-cross-references-data-v1']);
+  });
+
+  it('puts the cached file back when the fresh one never arrives', async () => {
+    // An offline reader whose cached copy this release cannot read. Deleting it and failing
+    // would cost them the app on every later visit; this release cannot use the file, but it is
+    // still theirs and a later release may read it.
+    const { log, store } = stubCaches();
+    const url = `${import.meta.env.BASE_URL}data/thing.json`;
+    let call = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => {
+        call += 1;
+        return call === 1
+          ? Promise.resolve(new Response('{"old":true}', { status: 200 }))
+          : Promise.reject(new Error('offline'));
+      }),
+    );
+
+    await expect(loadDataset('data/thing.json', unreadable)).rejects.toBeInstanceOf(
+      DatasetUnavailableError,
+    );
+    expect(log).toEqual([
+      'delete bible-cross-references-data-v1',
+      'put bible-cross-references-data-v1',
+    ]);
+    expect(store.has(url)).toBe(true);
+  });
+
+  it("leaves caches that are not this app's alone", async () => {
+    const { log } = stubCaches();
     const bodies = ['{"old":true}', '{"new":true}'];
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.resolve(new Response(bodies.shift() ?? '{}', { status: 200 }))),
     );
+    await loadDataset('data/thing.json', unreadable);
+    expect(log.some((entry) => entry.includes('someone-elses-cache'))).toBe(false);
+  });
 
-    const { value } = await loadDataset('data/thing.json', (json) => {
-      if (!(typeof json === 'object' && json !== null && 'new' in json)) {
-        throw new Error('this release needs the new shape');
-      }
-      return json;
-    });
-
-    expect(value).toEqual({ new: true });
-    expect(deleted).toEqual([`${import.meta.env.BASE_URL}data/thing.json`]);
+  it("does not retry a failure that is not about the file's shape", async () => {
+    // A bug while building the indices would meet the fresh copy the same way, so retrying only
+    // downloads several megabytes twice on the way to the same error.
+    stubCaches();
+    const fetchMock = vi.fn(() => Promise.resolve(new Response('{"n":1}', { status: 200 })));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      loadDataset('data/thing.json', () => {
+        throw new TypeError('a bug in the index builder');
+      }),
+    ).rejects.toThrow('a bug in the index builder');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('gives up when the fetched file is wrong too, rather than looping', async () => {
     stubCaches();
-    respondWith('{"old":true}');
-    await expect(
-      loadDataset('data/thing.json', () => {
-        throw new Error('still unreadable');
-      }),
-    ).rejects.toThrow('still unreadable');
+    const fetchMock = vi.fn(() => Promise.resolve(new Response('{"old":true}', { status: 200 })));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(loadDataset('data/thing.json', unreadable)).rejects.toThrow(
+      'this release needs the new shape',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not retry a download that failed, which would only fail again', async () => {
@@ -156,12 +227,7 @@ describe('loadDataset', () => {
       'fetch',
       vi.fn(() => Promise.resolve(new Response(bodies.shift() ?? '{}', { status: 200 }))),
     );
-    const { value } = await loadDataset('data/thing.json', (json) => {
-      if (!(typeof json === 'object' && json !== null && 'new' in json)) {
-        throw new Error('needs the new shape');
-      }
-      return json;
-    });
+    const { value } = await loadDataset('data/thing.json', unreadable);
     expect(value).toEqual({ new: true });
   });
 });

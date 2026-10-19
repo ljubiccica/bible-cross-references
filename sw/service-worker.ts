@@ -34,6 +34,8 @@ const SHELL_CACHE = `${PREFIX}-shell-${VERSION}`;
 // content hash, so keeping them across releases is the point. But a release that changes
 // what a dataset file looks like cannot read the one already stored, and the reader has no
 // way to clear it — so a format change retires the old cache instead of inheriting it.
+// A rename is not destructive: `activate` carries the previous cache's contents across and
+// `dataset` looks in older ones on a miss, so the only thing a bump costs is the name.
 const DATA_CACHE = `${PREFIX}-data-v${String(SCHEMA_VERSION)}`;
 
 const scope = new URL(self.registration.scope);
@@ -95,16 +97,35 @@ self.addEventListener('message', (event) => {
   // `Array.isArray` narrows only to `any[]`, so the elements arrive untyped even here. This
   // is a message from the page, which is the one input the worker does not control.
   const paths: readonly unknown[] = message.paths;
+  const dataDirectory = new URL(`${DATA_DIRECTORY}/`, scope).href;
   const urls = paths
     .filter((path): path is string => typeof path === 'string')
     .map(toUrl)
-    .filter((url) => url.startsWith(new URL(`${DATA_DIRECTORY}/`, scope).href));
+    // Under the data directory, and with no query. `store` keys on the whole URL, so
+    // `bsb.json?1`, `?2`, … would each be a separate four-megabyte entry: anything that can
+    // reach this worker could fill the reader's storage and push their offline copy out of it.
+    .filter((url) => url.startsWith(dataDirectory) && !url.includes('?') && !url.includes('#'));
   event.waitUntil(
     (async () => {
       await store(await caches.open(DATA_CACHE), urls);
     })(),
   );
 });
+
+/** Moves everything a previous release cached under another name into this release's cache. */
+async function adoptDatasets(from: string): Promise<void> {
+  const previous = await caches.open(from);
+  const current = await caches.open(DATA_CACHE);
+  for (const request of await previous.keys()) {
+    if ((await current.match(request, LOOKUP)) !== undefined) {
+      continue;
+    }
+    const response = await previous.match(request, LOOKUP);
+    if (response !== undefined) {
+      await current.put(request, response);
+    }
+  }
+}
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -115,18 +136,21 @@ self.addEventListener('activate', (event) => {
       );
       await Promise.all(oldShells.map((name) => caches.delete(name)));
 
-      // Data from a previous format goes only once this version has data of its own. Install
-      // fills the new cache when there is a network; with none it stays empty, and dropping the
-      // old one here would leave a reader who is offline with no datasets at all — a worse
-      // outcome than keeping files this version can still read. They are cleared on the next
-      // online visit instead.
-      const replacement = await caches.open(DATA_CACHE);
-      if ((await replacement.keys()).length > 0) {
-        const oldData = names.filter(
-          (name) => name.startsWith(`${PREFIX}-data`) && name !== DATA_CACHE,
-        );
-        await Promise.all(oldData.map((name) => caches.delete(name)));
-      }
+      // Datasets a previous release stored are carried across, not dropped.
+      //
+      // The reader chose that Bible and it is already on their device; making them fetch four
+      // megabytes again — over mobile data, or not at all because they are now on a plane — is
+      // the worst thing an upgrade can do to them. Deleting the old cache and hoping the new one
+      // refills is what breaks that, and it breaks hardest for exactly the reader who went
+      // offline right after upgrading.
+      await Promise.all(
+        names
+          .filter((name) => name.startsWith(`${PREFIX}-data`) && name !== DATA_CACHE)
+          .map(async (name) => {
+            await adoptDatasets(name);
+            await caches.delete(name);
+          }),
+      );
       await self.clients.claim();
     })(),
   );
@@ -163,10 +187,32 @@ async function page(request: Request): Promise<Response> {
   }
 }
 
+/**
+ * A copy a previous release left behind, promoted into this release's cache.
+ *
+ * `activate` moves them all across, but the release being replaced keeps running until the page
+ * reloads and can write one more file under its own name afterwards — the reader switching
+ * translation during the upgrade is exactly when that happens. Looking here on a miss means that
+ * copy is found rather than re-downloaded, whenever it was written.
+ */
+async function adoptedCopy(current: Cache, request: Request): Promise<Response | undefined> {
+  const names = (await caches.keys()).filter(
+    (name) => name.startsWith(`${PREFIX}-data`) && name !== DATA_CACHE,
+  );
+  for (const name of names) {
+    const response = await (await caches.open(name)).match(request, LOOKUP);
+    if (response !== undefined) {
+      await current.put(request, response.clone());
+      return response;
+    }
+  }
+  return undefined;
+}
+
 /** Datasets: the cached copy at once, refreshed in the background for the next visit. */
 async function dataset(event: FetchEvent, request: Request): Promise<Response> {
   const cache = await caches.open(DATA_CACHE);
-  const cached = await cache.match(request, LOOKUP);
+  const cached = (await cache.match(request, LOOKUP)) ?? (await adoptedCopy(cache, request));
   const refresh = fetch(request).then(async (response) => {
     if (response.ok) {
       await cache.put(request, response.clone());

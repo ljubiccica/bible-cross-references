@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useOptimistic,
   useRef,
@@ -23,7 +24,7 @@ import {
   type VizData,
 } from '../visualizations/shared/viz-data.ts';
 import styles from './Explorer.module.css';
-import { explorerUrl, plainTranslationFor } from './explorer-location.ts';
+import { explorerUrl, plainLocaleFor, plainTranslationFor } from './explorer-location.ts';
 import { InAppLink } from './InAppLink.tsx';
 import { readPreferredTranslation, useTranslationPreference } from './translation-choice.ts';
 import { useExplorerLocation } from './use-explorer-location.ts';
@@ -47,22 +48,26 @@ const [HOME] = VIEWS;
  */
 export function Explorer({ core }: { readonly core: VizCore }) {
   const { t, books } = useLocalization();
-  const [activeLocale, rememberLocale] = useLocalePreference();
+  const [, rememberLocale] = useLocalePreference();
   // The fallback for an address that names no language — the reader's own, not the one the
   // last address happened to set.
   const preferredLocale = usePreferredLocale();
   const { versification } = core;
-  // The reader's own translation, from an earlier visit; the URL still wins over it.
-  // The Bible a reader who has chosen none should get follows the language *on screen*, which
-  // a link naming one has already decided — `main.tsx` settles it before React mounts. The
-  // reader's own language, below, answers a different question: what a link naming none means.
-  const [preferredTranslation, rememberTranslation] = useTranslationPreference(activeLocale);
+  // The reader's own translation, from an earlier visit; the URL still wins over it. Read at the
+  // reader's own language, because this answers "what may a link leave out", not "what does this
+  // link show".
+  const [preferredTranslation, rememberTranslation] = useTranslationPreference(preferredLocale);
   // The URL holds the view, the passage, the filter and the translation: one filter for every
   // view, so they agree on which links exist, and a shared link shows exactly what its author saw.
+  //
+  // The translation default is passed as a function so the address can settle the language first
+  // and ask for that language's Bible — `readPreferredTranslation` returns an explicit choice
+  // where there is one, and the language's own text otherwise. Handing it a value computed from a
+  // store instead let a `?lang=pt` entry reached by pressing Back show the English Bible.
   const [location, navigate] = useExplorerLocation(
     VIEWS,
     versification,
-    preferredTranslation,
+    readPreferredTranslation,
     preferredLocale,
   );
   // The address is what the app speaks, not the other way round. It already answers both cases —
@@ -109,11 +114,15 @@ export function Explorer({ core }: { readonly core: VizCore }) {
   // The language a reader picks belongs in the address, so a reload or a bookmark keeps it, and
   // so does `<html lang>`, which is what a screen reader and the browser's own translation
   // prompt read.
-  useEffect(() => {
+  // Before paint, not after. Everything outside this component reads the language from its own
+  // store, so the address's answer has to be there by the time anything renders — an effect that
+  // runs afterwards leaves one painted frame where `<html lang>` and every link say Portuguese
+  // and the words are still English, which is exactly the frame Back lands on.
+  //
+  // Rewriting the address to match the store instead would erase the language from whichever
+  // history entry the reader just returned to.
+  useLayoutEffect(() => {
     document.documentElement.lang = getLocale(localeId).tag;
-    // Everything outside this component reads the language from its own store, so put the
-    // address's answer there. Rewriting the address to match the store instead would erase the
-    // language from whichever history entry the reader just pressed Back to.
     setActiveLocale(localeId);
   }, [localeId]);
 
@@ -143,6 +152,7 @@ export function Explorer({ core }: { readonly core: VizCore }) {
   }, [location.view, generation]);
 
   const plainTranslation = plainTranslationFor(preferredTranslation);
+  const plainLocale = plainLocaleFor(preferredLocale);
   const hrefOf = (view: View, target: Passage | null) =>
     explorerUrl(
       view,
@@ -150,6 +160,7 @@ export function Explorer({ core }: { readonly core: VizCore }) {
       import.meta.env.BASE_URL,
       versification,
       plainTranslation,
+      plainLocale,
     );
 
   // Beside the search box: what a reader is looking at, not how it is drawn, so it sits with the

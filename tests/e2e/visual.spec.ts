@@ -415,6 +415,25 @@ test.describe('in Portuguese', () => {
     await expect(page).toHaveScreenshot('pt-threads.png', FULL);
   });
 
+  test('the sections folded away, where a longer language has to fit the same row', async ({
+    page,
+  }) => {
+    // The bands are the tightest row in the app: an icon, a name, a description, a count and a
+    // chevron, all on one line. Portuguese is where they stop fitting, and for a while they
+    // pushed the panel sideways instead of truncating.
+    await show(page, './?lang=pt&ref=2Cor.11');
+    await openPanel(page);
+    const headers = page.locator(PANEL).getByRole('button', { expanded: true });
+    for (let guard = 0; guard < 8; guard += 1) {
+      if ((await headers.count()) === 0) {
+        break;
+      }
+      await headers.first().click();
+    }
+    await settle(page);
+    await shotPanel(page, 'pt-panel-collapsed.png');
+  });
+
   test('the picker, grouped by language', async ({ page }) => {
     await show(page, './?lang=pt');
     await page

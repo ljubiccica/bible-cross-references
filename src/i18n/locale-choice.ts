@@ -1,4 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { LOCALE_PARAM, localeFromParams } from '../app/initial-choice.ts';
+import { LOCALE_PREFERENCE } from '../shared/lib/preference-keys.ts';
 import { readPreference, writePreference } from '../shared/lib/preferences.ts';
 import { isLocaleId, matchLocale, type LocaleId } from './locale-id.ts';
 import { DEFAULT_LOCALE_ID } from './registry.ts';
@@ -10,16 +12,10 @@ import { DEFAULT_LOCALE_ID } from './registry.ts';
  */
 
 /** URL query parameter holding the interface language (`?lang=pt`). */
-export const LOCALE_PARAM = 'lang';
+export { LOCALE_PARAM, localeFromParams };
 
 /** Key of the stored choice, remembered between visits. */
-const PREFERENCE_KEY = 'locale';
-
-/** The locale a URL names, or `null` if it names none the app has. */
-export function localeFromParams(params: URLSearchParams): LocaleId | null {
-  const id = params.get(LOCALE_PARAM);
-  return id !== null && isLocaleId(id) ? id : null;
-}
+const PREFERENCE_KEY = LOCALE_PREFERENCE;
 
 /** The reader's last choice, outside React (the app needs it before it renders). */
 export function readPreferredLocale(): LocaleId | null {

@@ -3,15 +3,22 @@ import { describe, expect, it } from 'vitest';
 import { CANONICAL_VERSIFICATION } from '../../src/core/bible/versification.ts';
 import { DATASET_BUILDERS, type RawSourceContent } from './datasets.ts';
 import { BOOK_CODES as KJV_CODES } from './importers/ebible-vpl.ts';
-import type { RawSource } from './lib/sources.ts';
+import { expectMember, readSources, type RawSource } from './lib/sources.ts';
+
+/** The archive entry each zipped source pins, mirroring `data/sources.json`. */
+const MEMBERS: Readonly<Record<string, string>> = {
+  kjv: 'eng-kjv2006_vpl.txt',
+};
 
 function source(id: string): RawSource {
+  const member = MEMBERS[id];
   return {
     id,
     description: id,
     url: `https://example.org/${id}`,
     fileName: `${id}.txt`,
     sha256: 'a'.repeat(64),
+    ...(member === undefined ? {} : { member }),
     retrievedAt: '2026-01-01',
     license: 'CC BY 4.0',
     homepage: 'https://example.org/',
@@ -129,5 +136,24 @@ describe('DATASET_BUILDERS', () => {
       url: 'https://creativecommons.org/licenses/by/4.0/',
     });
     expect(dataset.attribution).toContain('STEP Bible');
+  });
+});
+
+describe('the pins and the importers', () => {
+  it('agree on which entry of an archive is read', async () => {
+    // A pin covers one file. If a builder reaches for a different entry than the pin names, the
+    // scripture it ships is never checked against anything — and nothing would say so.
+    const sources = await readSources();
+    for (const source of sources) {
+      if (source.member === undefined) {
+        continue;
+      }
+      expect(expectMember(source), source.id).toBe(source.member);
+      expect(source.fileName.endsWith('.zip'), `${source.id} pins an entry of a ZIP`).toBe(true);
+    }
+  });
+
+  it('names an entry for the KJV, whose archive carries four files it does not read', () => {
+    expect(MEMBERS['kjv']).toBe('eng-kjv2006_vpl.txt');
   });
 });

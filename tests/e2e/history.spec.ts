@@ -42,6 +42,12 @@ test.describe('browser history', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR');
     expect(query(page)).toContain('lang=pt');
     await expect(page.locator(ACTIVE).getByRole('button', { name: /Filtros/ })).toBeVisible();
+    // And the Bible comes back with the language. `html[lang]` and the words are set by two
+    // different statements, and the Bible by a third — asserting only the first would pass on an
+    // English-worded page claiming to be Portuguese, which is exactly what used to happen.
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Tradução/ })).toContainText(
+      'BLIVRE',
+    );
   });
 
   test('Forward returns to the language that followed it', async ({ page }) => {
@@ -52,9 +58,11 @@ test.describe('browser history', () => {
 
     await page.goBack();
     await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR');
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Filtros/ })).toBeVisible();
 
     await page.goForward();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Filters/ })).toBeVisible();
   });
 
   test('Back returns to the passage that was open', async ({ page }) => {
@@ -128,6 +136,30 @@ test.describe('browser history', () => {
     await page.reload();
     await waitForApp(page);
     await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR');
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Filtros/ })).toBeVisible();
+  });
+
+  test("an explicit language is not quietly replaced by the reader's own", async ({ browser }) => {
+    // A Portuguese browser follows an English link. Before `plainLocaleFor`, the first click
+    // dropped `lang=en` from the address and the next read filled the gap from the reader's own
+    // language, turning the interface Portuguese under them.
+    const context = await browser.newContext({ locale: 'pt-BR' });
+    const page = await context.newPage();
+    await page.goto('./?lang=en&ref=John.3.16');
+    await waitForApp(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+
+    const search = page.locator(ACTIVE).getByRole('searchbox');
+    await search.fill('Isaiah 53:5');
+    await search.press('Enter');
+    await expect(page.locator(PANEL).getByRole('heading', { name: 'Isaiah 53:5' })).toBeVisible();
+
+    expect(query(page)).toContain('lang=en');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await page.reload();
+    await waitForApp(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await context.close();
   });
 
   test('pressing Back repeatedly reaches the first entry without getting stuck', async ({

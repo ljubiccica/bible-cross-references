@@ -22,7 +22,14 @@ const JOHN_3_16 = versePassage(kjv.indexOf({ book: 'John', chapter: 3, verse: 16
 const ISAIAH_53: Passage = { kind: 'chapter', book: 'Isa', chapter: 53 };
 
 function parse(url: string, base = '/', preferred = DEFAULT_TRANSLATION_ID) {
-  return parseExplorerUrl(new URL(url, 'https://example.org'), base, ROUTES, kjv, preferred, 'en');
+  return parseExplorerUrl(
+    new URL(url, 'https://example.org'),
+    base,
+    ROUTES,
+    kjv,
+    () => preferred,
+    'en',
+  );
 }
 
 /** A location's view and passage, for tests that don't look at the filter. */

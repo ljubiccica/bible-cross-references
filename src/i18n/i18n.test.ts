@@ -12,7 +12,6 @@ import { ptBooks } from './books/pt.ts';
 import { isLocaleId, LOCALE_IDS, matchLocale, type LocaleId } from './locale-id.ts';
 import { en } from './messages/en.ts';
 import type { Emphasized } from './messages/types.ts';
-import { pt } from './messages/pt.ts';
 import { DEFAULT_LOCALE_ID, getLocale, LOCALE_LIST } from './registry.ts';
 import { TRANSLATION_MANIFESTS } from '../translations/registry.ts';
 import { message } from './translate.ts';
@@ -121,12 +120,21 @@ describe('every message, in every language', () => {
    * for `['', '']` — a message that renders to nothing at all. This flattens first.
    */
   function expectWords(rendered: string | Emphasized, key: string): void {
-    const text =
-      typeof rendered === 'string'
-        ? rendered
-        : rendered.map((part) => (typeof part === 'string' ? part : part.strong)).join('');
-    expect(text.trim().length, key).toBeGreaterThan(0);
+    expect(textOf(rendered).trim().length, key).toBeGreaterThan(0);
   }
+
+  /** Flattens a rendered message to plain text. */
+  function textOf(rendered: string | Emphasized): string {
+    return typeof rendered === 'string'
+      ? rendered
+      : rendered.map((part) => (typeof part === 'string' ? part : part.strong)).join('');
+  }
+
+  /**
+   * A value no message would contain by accident, so that a message which drops an argument can
+   * be told from one that renders it.
+   */
+  const SENTINEL = '⟪arg⟫';
 
   function renderAll(messages: Readonly<Record<string, unknown>>): void {
     for (const [key, value] of Object.entries(messages)) {
@@ -140,15 +148,31 @@ describe('every message, in every language', () => {
       // Both forms, so a message with a singular and a plural branch is seen each way.
       expectWords(render(...args), key);
       expectWords(render(...args.map(() => 2)), key);
+
+      // A translation may legitimately take fewer arguments than English — TypeScript allows it
+      // and some languages need fewer. What it may not do is quietly stop showing one. Where the
+      // English message puts an argument on screen, the translation has to as well, or a reader
+      // gets "Copy with a link" where the reference should have been.
+      const english = en[key as keyof typeof en];
+      if (typeof english !== 'function') {
+        continue;
+      }
+      const reference = english as (...args: unknown[]) => string | Emphasized;
+      const marked = Array.from({ length: reference.length }, () => SENTINEL);
+      if (!textOf(reference(...marked)).includes(SENTINEL)) {
+        continue;
+      }
+      expect(
+        textOf(render(...marked.slice(0, render.length))),
+        `${key} drops its argument`,
+      ).toContain(SENTINEL);
     }
   }
 
-  it('renders every English message', () => {
-    renderAll(en);
-  });
-
-  it('renders every Portuguese message', () => {
-    renderAll(pt);
+  it.each(LOCALE_LIST)('renders every message in $id', (locale) => {
+    // Every language, not two named by hand: a catalogue nobody executes is a catalogue whose
+    // first broken template a reader finds.
+    renderAll({ ...en, ...locale.messages });
   });
 
   it('renders the messages whose arguments may be absent', () => {
@@ -272,8 +296,10 @@ describe('looking a book up in Portuguese', () => {
     expect(result.kind === 'found' && result.book.id).toBe('Rev');
   });
 
-  it('builds each language’s index without an ambiguous key', () => {
-    // `buildIndex` throws on a duplicate; looking something up in each language proves it built.
+  it('builds each language’s index and answers from it', () => {
+    // `bookNameCollisions` above is what proves no two books share a spelling — `buildIndex`
+    // stopped throwing on a duplicate, because that throw landed in the search box's submit
+    // handler where nothing catches it. This checks the index is built and usable at all.
     for (const locale of LOCALE_LIST) {
       expect(lookupBook('Gen', locale.books).kind).toBe('found');
     }

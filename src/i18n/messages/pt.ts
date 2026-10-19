@@ -45,13 +45,13 @@ export const pt: LocaleMessages = {
   'attribution.bsb': 'Texto bíblico: Berean Standard Bible (BSB), dedicada ao domínio público.',
   'attribution.kjv':
     'Texto bíblico: King James Version (Authorized Version), texto de 1769. Em domínio público ' +
-    'nos Estados Unidos e na maior parte do mundo; no Reino Unido os direitos pertencem à Coroa ' +
-    'e são administrados pela Cambridge University Press.',
+    'nos Estados Unidos e na maior parte do mundo; no Reino Unido, uma carta-patente reserva o ' +
+    'direito de imprimi-lo aos impressores da Coroa — Cambridge University Press, Oxford ' +
+    'University Press e Collins.',
   'attribution.blivre':
     'Texto bíblico: Bíblia Livre (BLIVRE), © Diego Santos, Mario Sérgio e Marco Teles, ' +
     'fevereiro de 2018 (edição Textus Receptus), https://sites.google.com/site/biblialivre/. ' +
-    'Alterações: o espaçamento dos dois-pontos foi normalizado — o espaço antes passou para ' +
-    'depois, e o espaço que faltava depois foi inserido.',
+    'Alterações: os espaços foram normalizados; nenhuma palavra foi alterada.',
   'license.publicDomain': 'Domínio público',
   'menu.translation': 'Tradução',
   'menu.translation.failed': (name) => `Não foi possível carregar ${name}.`,
@@ -107,7 +107,7 @@ export const pt: LocaleMessages = {
   'panel.references': 'Referências',
   'panel.references.note': 'para onde esta passagem aponta',
   'panel.referencedBy': 'Referenciado por',
-  'panel.referencedBy.note': 'passagens que apontam para cá',
+  'panel.referencedBy.note': 'que apontam para cá',
   'panel.verses': 'Versículos',
   'panel.verses.note': 'toque num para focá-lo',
   'panel.none': 'Nenhuma',

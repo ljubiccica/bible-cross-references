@@ -11,17 +11,24 @@ refuses anything that does not match it, before turning them into the datasets i
 | `bsb.txt`                                                   | [Berean Standard Bible](https://berean.bible/), from <https://bereanbible.com/bsb.txt>, retrieved 2026-09-25                                                                                              | Public domain ("dedicated to the public domain", per the file)  |
 | `openbible-cross-references.zip`                            | [OpenBible.info cross-references](https://www.openbible.info/labs/cross-references/), from <https://a.openbible.info/data/cross-references.zip>, snapshot 2026-09-21                                      | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)       |
 | `bliv-tr_vpl.zip`                                           | [Bíblia Livre](https://sites.google.com/site/biblialivre/) (Textus Receptus edition, February 2018), from the project's own [GitHub release](https://github.com/blivre/BibliaLivre/releases/tag/2018.2.0) | [CC BY 3.0 BR](https://creativecommons.org/licenses/by/3.0/br/) |
-| `eng-kjv2006_vpl.zip` (not committed; fetched by the build) | [King James Version](https://ebible.org/Scriptures/details.php?id=eng-kjv2006), from <https://ebible.org/Scriptures/eng-kjv2006_vpl.zip>, retrieved 2026-10-15                                            | Public domain (in the United Kingdom: Crown copyright)          |
+| `eng-kjv2006_vpl.zip` (not committed; fetched by the build) | [King James Version](https://ebible.org/Scriptures/details.php?id=eng-kjv2006), from <https://ebible.org/Scriptures/eng-kjv2006_vpl.zip>, retrieved 2026-10-17                                            | Public domain (in the United Kingdom: Crown copyright)          |
 | `stepbible-*.txt` (not committed; fetched by the build)     | [STEPBible](https://github.com/STEPBible/STEPBible-Data) tagged Hebrew (TAHOT) and Greek (TAGNT) with the TBESH and TBESG lexicons, retrieved 2026-10-16                                                  | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)       |
 
 Attribution for the scripture texts: _Berean Standard Bible (BSB), dedicated to the public
 domain._ and _King James Version (Authorized Version), the 1769 text; public domain in the United
 States and most of the world, Crown copyright in the United Kingdom._ And, for the Portuguese:
 _Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles, fevereiro de 2018,
-licensed under CC BY 3.0 Brasil (<http://creativecommons.org/licenses/by/3.0/br/>)._ Modified: the
-spacing around colons is normalized — a space before a colon moves to after it, and a missing
-space after one is inserted, which touches 270 verses in 22 books. The colon keeps its place; only
-the space moves, so not one non-whitespace character of the translation differs from the source.
+licensed under CC BY 3.0 Brasil (<http://creativecommons.org/licenses/by/3.0/br/>)._ Modified:
+whitespace is normalized, which touches **271 verses in 23 books** — 270 where the spacing around
+a colon moves (a space before it moves to after it, and a missing space after one is inserted)
+and one, Zechariah 7:13, where a non-breaking space becomes an ordinary one. Not one
+non-whitespace character of the Bíblia Livre differs from the source.
+
+The King James text is changed in one way of its own: the pilcrows that mark a paragraph in
+eBible's edition are removed, in **2,970 verses across 42 books**. They are a typographic mark
+rather than wording, and the app sets paragraphs itself. The text is public domain, so this
+carries no licence condition; it is recorded here because the repository should say what its
+build does to every text it ships.
 
 The square brackets the translators put around words they supplied are **kept**. They are not
 typography: in the source they are an explicit `\added` element, the convention printed Bibles set

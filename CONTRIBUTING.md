@@ -16,7 +16,8 @@ npm run test:e2e   # the reader's flows, in a real browser against the built sit
 `npm run check` is the same command CI runs, so if it passes locally it passes there. It fails on:
 
 - a TypeScript error (the config is strict, including `noUncheckedIndexedAccess` and
-  `exactOptionalPropertyTypes`; there is no `any`, no `as` escape hatch and no `!`);
+  `exactOptionalPropertyTypes`; there is no `any` and no `!`, and `as` appears only where
+  `Object.fromEntries` loses a key type — `npm run typecoverage` holds the line);
 - an ESLint error (type-aware rules, so a floating promise or an unsafe value fails the build);
 - a file Prettier would reformat — run `npm run format`;
 - a failing unit test;
@@ -46,8 +47,21 @@ verse of a chapter given without one')`, not `it('calls indexOf')`.
 Two different jobs, and they are independent:
 
 - **A language for the interface** — `src/i18n/`. Add the tag to `LOCALE_IDS` and the compiler
-  lists every file that needs an entry. Leaving a message out is allowed; it falls back to
-  English, and a test reports the gap.
+  names every property that needs a value: an entry in `registry.ts`, and four new files under
+  `books/`, `genres/`, `install/` and `messages/`. The first three are complete or they do not
+  compile — all 66 books, all 10 genres, all three install platforms.
+
+  Messages are the exception: the type is `Partial`, so a missing one falls back to English and
+  the compiler says nothing. A test does, though, and it **fails** rather than reporting — a
+  language the app offers should not be half in another one. To land a translation in stages,
+  put the tag in `WORK_IN_PROGRESS` in `src/i18n/i18n.test.ts` and take it out when the
+  catalogue is complete.
+
+  Four more things the compiler cannot ask for: a wrap threshold in
+  `VizPage.module.css` and `controls.module.css` if the language runs longer than English (the
+  two must agree), a case in `tests/e2e/languages.spec.ts`, and the language's row in this file
+  and in the README.
+
 - **A Bible text** — a pinned source, a manifest and an importer entry. The one hard requirement
   is verse numbering: the app indexes every verse by its position in the KJV's 31,102, so a
   translation that numbers verses differently needs a mapping before it can be added. The

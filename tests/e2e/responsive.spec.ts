@@ -1,11 +1,13 @@
-import { expect, test } from '@playwright/test';
-import { ACTIVE, PANEL, collectErrors, waitForApp } from './helpers.ts';
+import { expect, test, type Page } from '@playwright/test';
+import { ACTIVE, PANEL, collectErrors, openPanel, waitForApp } from './helpers.ts';
 
 /** Every width the layout has to survive, from the oldest phone to a wide desktop. */
 const WIDTHS = [320, 360, 375, 390, 412, 430, 768, 834, 1024, 1280, 1440, 1920];
 
 test.describe('the layout holds at every width', () => {
   test.beforeEach(() => {
+    // The phone project does not run this file at all (see playwright.config.ts): these tests
+    // set the viewport themselves, so a second project would only repeat them.
     test.skip(test.info().project.name !== 'desktop', 'Widths are driven directly here.');
   });
 
@@ -72,6 +74,76 @@ test.describe('the layout holds at every width', () => {
       expect(measured.height).toBeLessThan(64);
       expect(measured.right).toBeLessThanOrEqual(width);
       expect(measured.widest).toBeLessThanOrEqual(width);
+    });
+  }
+
+  /**
+   * The details panel, in every language, at every width.
+   *
+   * The band at the top of each section bleeds past the panel's padding on purpose, so it is
+   * wider than its own parent. That is fine until a grid item refuses to shrink below it: then
+   * the track grows, and the whole panel scrolls sideways with the counts pushed off the right
+   * edge. A longer language is what makes it visible, which is why this runs in both.
+   */
+  /**
+   * Every language the app offers, read from the picker rather than listed here.
+   *
+   * Listing them means the next language is only covered when somebody remembers to add a line,
+   * and the whole point of this test is the language nobody thought about. Asking the app which
+   * languages it has covers one the day it ships.
+   */
+  async function languagesTheAppOffers(page: Page): Promise<readonly string[]> {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('./');
+    await waitForApp(page);
+    await page
+      .locator(ACTIVE)
+      .getByRole('button', { name: /Translation/ })
+      .click();
+    const picker = page.locator(ACTIVE).getByRole('combobox');
+    if ((await picker.count()) === 0) {
+      return ['en'];
+    }
+    return picker
+      .first()
+      .locator('option')
+      .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
+  }
+
+  for (const width of WIDTHS) {
+    test(`${String(width)}px: the panel does not scroll sideways, in any language`, async ({
+      page,
+    }) => {
+      const languages = await languagesTheAppOffers(page);
+      expect(languages.length).toBeGreaterThan(0);
+
+      for (const language of languages) {
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto(`./?lang=${language}&ref=2Cor.11`);
+        await waitForApp(page);
+        await openPanel(page);
+
+        const measured = await page.locator(`${ACTIVE} aside`).evaluate((aside) => {
+          const scroller = aside.querySelector('[class*="scroll"]') ?? aside;
+          const bands = [...aside.querySelectorAll('h3 button')];
+          const right = scroller.getBoundingClientRect().right;
+          return {
+            overflow: scroller.scrollWidth - scroller.clientWidth,
+            // Every count has to stay on screen: it is the one thing a returning reader is
+            // looking for, and it sits at the end of the row.
+            countsOffscreen: bands.filter((band) => {
+              const count = band.querySelector('[class*="count"]');
+              return count !== null && count.getBoundingClientRect().right > right + 1;
+            }).length,
+          };
+        });
+
+        expect(measured.overflow, `${language} at ${String(width)}px scrolls sideways`).toBe(0);
+        expect(
+          measured.countsOffscreen,
+          `${language} at ${String(width)}px pushes a count off the edge`,
+        ).toBe(0);
+      }
     });
   }
 

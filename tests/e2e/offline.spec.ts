@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type BrowserContext } from '@playwright/test';
 import { ACTIVE, PANEL, waitForApp } from './helpers.ts';
 
 const WORKER = resolve(import.meta.dirname, '../../dist/sw.js');
@@ -42,6 +42,29 @@ async function installWorker(page: Page): Promise<void> {
     .toBeGreaterThanOrEqual(2);
 }
 
+/**
+ * Cuts the network for real.
+ *
+ * `context.setOffline(true)` does not reach fetches the service worker makes. Measured against
+ * this build: with it set and the page reloaded, the server was still asked for — and still
+ * served — `bsb.json`, `openbible.json` and `stepbible.json`. Every test below would therefore
+ * have passed with an empty cache, which is the opposite of what they are for.
+ *
+ * Aborting the context's routes does reach them, so these tests are about the cache rather than
+ * about a server that happened to still be listening. `setOffline` stays for `navigator.onLine`,
+ * which the app reads.
+ */
+async function cutTheNetwork(context: BrowserContext): Promise<void> {
+  await context.setOffline(true);
+  await context.route('**/*', (route) => route.abort());
+}
+
+/** Puts it back. */
+async function restoreTheNetwork(context: BrowserContext): Promise<void> {
+  await context.unroute('**/*');
+  await context.setOffline(false);
+}
+
 test.describe('the offline cache', () => {
   test('stores the app and its data on the first visit', async ({ page }) => {
     await installWorker(page);
@@ -58,12 +81,12 @@ test.describe('the offline cache', () => {
 
   test('the app still works with the network gone', async ({ page, context }) => {
     await installWorker(page);
-    await context.setOffline(true);
+    await cutTheNetwork(context);
     await page.reload();
     await waitForApp(page);
     await expect(page.locator(PANEL).getByRole('heading', { name: 'John 3:16' })).toBeVisible();
     await expect(page.locator(PANEL)).toContainText(/For God so loved the world/);
-    await context.setOffline(false);
+    await restoreTheNetwork(context);
   });
 
   test('a translation chosen while online is there offline too', async ({ page, context }) => {
@@ -88,11 +111,11 @@ test.describe('the offline cache', () => {
       )
       .toBeGreaterThanOrEqual(3);
 
-    await context.setOffline(true);
+    await cutTheNetwork(context);
     await page.reload();
     await waitForApp(page);
     await expect(page.locator(PANEL)).toContainText(/only begotten Son/);
-    await context.setOffline(false);
+    await restoreTheNetwork(context);
   });
 
   test('a new release replaces the old cache instead of being stuck behind it', async ({
@@ -124,6 +147,65 @@ test.describe('the offline cache', () => {
       // The old one is gone, not left to grow forever.
       const { caches: after } = await cacheState(page);
       expect(Object.keys(after)).not.toContain(before);
+    } finally {
+      await writeFile(WORKER, original);
+    }
+  });
+
+  test("a release that renames the data cache keeps the reader's own Bible", async ({
+    page,
+    context,
+  }) => {
+    // The failure this exists for: a reader who had chosen the KJV upgraded, the new worker
+    // started a cache under a new name, and the old one — the only copy of their Bible — was
+    // deleted. They were fine until they went offline, and then the app was a dead screen until
+    // they were next online. Carrying the old cache across costs nothing and avoids all of it.
+    await installWorker(page);
+    await page
+      .locator(ACTIVE)
+      .getByRole('button', { name: /Translation/ })
+      .click();
+    await page
+      .locator(ACTIVE)
+      .getByRole('radio', { name: /King James/ })
+      .check();
+    await expect(page.locator(PANEL)).toContainText(/only begotten Son/);
+    await expect
+      .poll(
+        async () => {
+          const { caches: stored } = await cacheState(page);
+          const name = Object.keys(stored).find((key) => key.includes('-data'));
+          return stored[name ?? ''] ?? 0;
+        },
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThanOrEqual(3);
+
+    const original = await readFile(WORKER, 'utf8');
+    try {
+      // A release that changes both names, which is what a dataset format bump looks like.
+      await writeFile(
+        WORKER,
+        original
+          .replace(/const VERSION = "(\w+)"/, 'const VERSION = "next"')
+          .replace(/const SCHEMA_VERSION = (\d+)/, 'const SCHEMA_VERSION = 99'),
+      );
+      await page.reload();
+      await waitForApp(page);
+      await expect
+        .poll(
+          async () =>
+            Object.keys((await cacheState(page)).caches).some((name) => name.includes('-data-v99')),
+          { timeout: 30_000 },
+        )
+        .toBe(true);
+
+      // The KJV came across rather than being left behind with the old name.
+      await cutTheNetwork(context);
+      await page.reload();
+      await waitForApp(page);
+      await expect(page.locator(PANEL)).toContainText(/only begotten Son/);
+      await restoreTheNetwork(context);
     } finally {
       await writeFile(WORKER, original);
     }

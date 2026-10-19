@@ -2,6 +2,8 @@ import type { HtmlTagDescriptor, Plugin } from 'vite';
 import { defaultTranslationFor } from '../src/translations/default-for-locale.ts';
 import { crossReferencesDatasetPath, translationDatasetPath } from '../src/core/datasets/paths.ts';
 import { DEFAULT_LOCALE_ID, LOCALE_IDS } from '../src/i18n/locale-id.ts';
+import { LOCALE_STORAGE_KEY, TRANSLATION_STORAGE_KEY } from '../src/shared/lib/preference-keys.ts';
+import { TRANSLATION_MANIFESTS } from '../src/translations/registry.ts';
 import { vizCrossReferenceSource } from '../src/visualizations/shared/viz-datasets.ts';
 import {
   atEndOfHead,
@@ -37,41 +39,35 @@ export function siteHead(): Plugin {
       // when the offline cache serves the page: it has them already, and Chrome can't hand a
       // preload over to the app's own request through a service worker (it would read them twice).
       //
-      // Which Bible to preload depends on the reader's language, and the language is only known
-      // here, in the browser: the HTML is one file for everybody. Guessing wrong is expensive —
-      // preloading the English text for a Portuguese reader downloads about 3.8 MB they will
-      // never read, on top of the 3.8 MB they will. So this picks the same way `main.tsx` does,
-      // and both must keep agreeing: the address, then the stored choice, then the browser.
-      const shared = JSON.stringify(
-        `${base}${crossReferencesDatasetPath(vizCrossReferenceSource().id)}`,
-      );
-      const byLocale = JSON.stringify(
-        Object.fromEntries(
+      // Which Bible to preload depends on the reader, and the reader is only known here, in
+      // the browser: the HTML is one file for everybody. Guessing wrong is expensive — the wrong
+      // text is ~3.8 MB downloaded on top of the ~3.8 MB that is actually read.
+      //
+      // This has to answer exactly what `initialTranslationId` answers: the address's `?t=`,
+      // then the stored choice, then the language's own Bible — where the language is the
+      // address's `?lang=`, then the stored one, then the browser's. `vite/plugins.test.ts`
+      // runs this script against that function to keep the two from drifting, which they did
+      // the first time this was written.
+      const shared = `${base}${crossReferencesDatasetPath(vizCrossReferenceSource().id)}`;
+      const preload = {
+        shared,
+        byTranslation: Object.fromEntries(
+          TRANSLATION_MANIFESTS.map((manifest) => [
+            manifest.id,
+            `${base}${translationDatasetPath(manifest.id)}`,
+          ]),
+        ),
+        byLocale: Object.fromEntries(
           LOCALE_IDS.map((id) => [
             id,
             `${base}${translationDatasetPath(defaultTranslationFor(id))}`,
           ]),
         ),
-      );
-      tags.push({
-        tag: 'script',
-        children:
-          'if (!navigator.serviceWorker?.controller) {' +
-          `  const byLocale = ${byLocale};` +
-          '  let lang = new URL(location.href).searchParams.get("lang");' +
-          '  if (!lang || !(lang in byLocale)) {' +
-          '    try { lang = localStorage.getItem("bible-cross-references:locale"); } catch { lang = null; }' +
-          '  }' +
-          '  if (!lang || !(lang in byLocale)) {' +
-          '    lang = (navigator.languages || []).map((tag) => tag.split("-")[0]).find((tag) => tag in byLocale) ?? null;' +
-          '  }' +
-          `  const hrefs = [${shared}, byLocale[lang] ?? byLocale[${JSON.stringify(DEFAULT_LOCALE_ID)}]];` +
-          '  for (const href of hrefs) {' +
-          '    const link = document.createElement("link"); link.rel = "preload"; link.as = "fetch";' +
-          '    link.crossOrigin = "anonymous"; link.href = href; document.head.append(link);' +
-          '  }' +
-          '}',
-      });
+        fallback: `${base}${translationDatasetPath(defaultTranslationFor(DEFAULT_LOCALE_ID))}`,
+        localeKey: LOCALE_STORAGE_KEY,
+        translationKey: TRANSLATION_STORAGE_KEY,
+      };
+      tags.push({ tag: 'script', children: preloadScript(preload) });
       const page = pageOf(context.path);
       if (!page?.listed) {
         tags.push({ tag: 'meta', attrs: { name: 'robots', content: 'noindex' } });
@@ -149,4 +145,50 @@ export function siteHead(): Plugin {
       });
     },
   };
+}
+
+/** What the inline preload script needs to make the same choice the app will. */
+interface PreloadPlan {
+  readonly shared: string;
+  readonly byTranslation: Readonly<Record<string, string>>;
+  readonly byLocale: Readonly<Record<string, string>>;
+  readonly fallback: string;
+  readonly localeKey: string;
+  readonly translationKey: string;
+}
+
+/**
+ * The script that starts the datasets downloading before the app has parsed.
+ *
+ * Written as a string because it has to run before any module does. `Object.keys` rather than
+ * `in` throughout: `in` finds `toString` on the prototype of a plain object, so `?lang=toString`
+ * would otherwise preload a URL made from a function's source text.
+ */
+export function preloadScript(plan: PreloadPlan): string {
+  return [
+    'if (!navigator.serviceWorker?.controller) {',
+    `  const plan = ${JSON.stringify(plan)};`,
+    '  const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };',
+    '  const pick = (map, key) => (key !== null && Object.keys(map).includes(key) ? map[key] : null);',
+    '  const params = new URL(location.href).searchParams;',
+    '  const lang =',
+    '    pick(plan.byLocale, params.get("lang")) !== null',
+    '      ? params.get("lang")',
+    '      : pick(plan.byLocale, read(plan.localeKey)) !== null',
+    '        ? read(plan.localeKey)',
+    '        : (navigator.languages || [])',
+    '            .map((tag) => String(tag).toLowerCase().split("-")[0])',
+    '            .find((tag) => Object.keys(plan.byLocale).includes(tag)) ?? null;',
+    '  const text =',
+    '    pick(plan.byTranslation, params.get("t")) ??',
+    '    pick(plan.byTranslation, read(plan.translationKey)) ??',
+    '    pick(plan.byLocale, lang) ??',
+    '    plan.fallback;',
+    '  for (const href of [plan.shared, text]) {',
+    '    const link = document.createElement("link");',
+    '    link.rel = "preload"; link.as = "fetch"; link.crossOrigin = "anonymous";',
+    '    link.href = href; document.head.append(link);',
+    '  }',
+    '}',
+  ].join('\n');
 }

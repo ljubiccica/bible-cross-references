@@ -102,3 +102,17 @@ export function pinnedContent(source: RawSource, content: Uint8Array): Uint8Arra
 export function pinnedDigest(source: RawSource, content: Uint8Array): string {
   return sha256Hex(pinnedContent(source, content));
 }
+
+/**
+ * The archive entry a source pins, for an importer that reads one.
+ *
+ * Refuses a source that names no member rather than falling back to a literal: the pin and the
+ * importer have to cover the same bytes, and the only way to be sure is to read both from the
+ * same place.
+ */
+export function expectMember(source: RawSource): string {
+  if (source.member === undefined) {
+    throw new Error(`Source "${source.id}" pins the whole archive, so it names no entry to read.`);
+  }
+  return source.member;
+}

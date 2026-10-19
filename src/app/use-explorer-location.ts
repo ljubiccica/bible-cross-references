@@ -5,6 +5,7 @@ import type { LocaleId } from '../i18n/locale-id.ts';
 import {
   explorerUrl,
   parseExplorerUrl,
+  plainLocaleFor,
   plainTranslationFor,
   type ExplorerLocation,
   type ViewRoute,
@@ -23,7 +24,7 @@ export interface NavigateOptions {
 export function useExplorerLocation<Id extends string>(
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
-  defaultTranslation: TranslationId,
+  defaultTranslation: (locale: LocaleId) => TranslationId,
   defaultLocale: LocaleId,
 ): readonly [
   ExplorerLocation<Id>,
@@ -62,7 +63,10 @@ export function useExplorerLocation<Id extends string>(
         next,
         import.meta.env.BASE_URL,
         versification,
-        plainTranslationFor(defaultTranslation),
+        // What this reader would land on without a `?t=`: their own preference, read at their
+        // own language rather than at whatever language the address happens to name.
+        plainTranslationFor(defaultTranslation(defaultLocale)),
+        plainLocaleFor(defaultLocale),
       );
       if (url !== `${window.location.pathname}${window.location.search}`) {
         if (replace) {
@@ -72,7 +76,7 @@ export function useExplorerLocation<Id extends string>(
         }
       }
     },
-    [routes, versification, defaultTranslation],
+    [routes, versification, defaultTranslation, defaultLocale],
   );
 
   return [location, navigate];

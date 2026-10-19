@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import { isTranslationId, type TranslationId } from '../core/datasets/ids.ts';
+import { TRANSLATION_PARAM, translationFromParams } from './initial-choice.ts';
+import { TRANSLATION_PREFERENCE } from '../shared/lib/preference-keys.ts';
 import { readPreference, useStringPreference } from '../shared/lib/preferences.ts';
 import type { LocaleId } from '../i18n/locale-id.ts';
 import { defaultTranslationFor } from '../translations/default-for-locale.ts';
@@ -12,16 +14,10 @@ export { defaultTranslationFor };
  */
 
 /** URL query parameter holding the translation (`?t=kjv`). */
-export const TRANSLATION_PARAM = 't';
+export { TRANSLATION_PARAM, translationFromParams };
 
 /** Key of the stored choice, remembered between visits. */
-const PREFERENCE_KEY = 'translation';
-
-/** The translation a URL names, or `null` if it names none the app knows. */
-export function translationFromParams(params: URLSearchParams): TranslationId | null {
-  const id = params.get(TRANSLATION_PARAM);
-  return id !== null && isTranslationId(id) ? id : null;
-}
+const PREFERENCE_KEY = TRANSLATION_PREFERENCE;
 
 /** The reader's last choice, outside React (the app starts its download before it renders). */
 export function readPreferredTranslation(localeId: LocaleId): TranslationId {
