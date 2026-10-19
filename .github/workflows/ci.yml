@@ -51,6 +51,24 @@ jobs:
           path: data/raw
           key: raw-data-${{ hashFiles('data/sources.json') }}
       - run: npm run build
+      # `npm run build` rewrites data/datasets.lock.json from whatever it just produced. If that
+      # differs from what is committed, the generated scripture differs too — and since
+      # public/data is not in the repository, this file is the only place a reviewer would see
+      # it. Failing here turns "an importer changed" into "and here is what it did to the text".
+      - name: The generated datasets match the committed manifest
+        run: |
+          # Tracked first: `git diff` says nothing about a file that was never committed, so
+          # without this a deleted or forgotten manifest would pass the check by being absent.
+          if ! git ls-files --error-unmatch data/datasets.lock.json >/dev/null 2>&1; then
+            echo '::error::data/datasets.lock.json is not committed. Run `npm run data:build` and commit it.'
+            exit 1
+          fi
+          if ! git diff --quiet -- data/datasets.lock.json; then
+            echo '::error::The build produced different datasets than data/datasets.lock.json records.'
+            git --no-pager diff -- data/datasets.lock.json
+            echo 'Run `npm run data:build` and commit the updated manifest with your change.'
+            exit 1
+          fi
       - name: Keep the built site for the end-to-end tests
         uses: actions/upload-artifact@v7
         with:

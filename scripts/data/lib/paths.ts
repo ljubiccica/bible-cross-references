@@ -8,6 +8,9 @@ export const SOURCES_FILE = resolve(REPO_ROOT, 'data/sources.json');
 /** Downloaded raw source files (git-ignored). */
 export const RAW_DATA_DIR = resolve(REPO_ROOT, 'data/raw');
 
+/** What the generated datasets contained last time they were committed. */
+export const MANIFEST_FILE = resolve(REPO_ROOT, 'data/datasets.lock.json');
+
 /** Static assets served by the app; generated datasets go under `public/data` (git-ignored). */
 export const PUBLIC_DIR = resolve(REPO_ROOT, 'public');
 

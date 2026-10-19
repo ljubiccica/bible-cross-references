@@ -60,4 +60,33 @@ export async function settle(page: Page): Promise<void> {
       }),
   );
   await page.waitForTimeout(600);
+
+  // And then until nothing is still scrolling.
+  //
+  // The threads view brings the chosen verse into view with `behavior: 'smooth'`, which is a
+  // scroll animation started from script: Playwright's `animations: 'disabled'` does not reach
+  // it, and it has no event to wait on. A shot taken while it is still moving is offset by a
+  // line of text against one taken after — 4% of the pixels, which is how this suite came by a
+  // snapshot that failed about two runs in three.
+  await page.evaluate(() => {
+    delete (window as unknown as { __scrollSettle?: unknown }).__scrollSettle;
+  });
+  await page.waitForFunction(
+    () => {
+      const positions = [...document.querySelectorAll('*')]
+        .filter((element) => element.scrollTop !== 0 || element.scrollLeft !== 0)
+        .map((element) => `${String(element.scrollTop)},${String(element.scrollLeft)}`)
+        .join('|');
+      const store = window as unknown as { __scrollSettle?: { at: string; count: number } };
+      const previous = store.__scrollSettle;
+      const next =
+        previous?.at === positions
+          ? { at: positions, count: previous.count + 1 }
+          : { at: positions, count: 0 };
+      store.__scrollSettle = next;
+      // Three frames with nothing moving. A smooth scroll never pauses that long mid-flight.
+      return next.count >= 3;
+    },
+    { timeout: 10_000, polling: 'raf' },
+  );
 }

@@ -13,17 +13,33 @@ import { ACTIVE, PANEL, openPanel, settle, waitForApp } from './helpers.ts';
 const FULL = { fullPage: false } as const;
 
 /**
+ * How much a shot may differ before it fails.
+ *
+ * The default (`playwright.config.ts`) is 2% of the pixels, which sounds strict and is not: at
+ * 1440×900 it permits about 26,000 of them. A regression that turned four bold numbers regular
+ * was on the order of 200 pixels — well inside the budget, and the suite stayed green while a
+ * human spotted it in the PNG. The budget is wide because the arcs are drawn by a software
+ * renderer that is not pixel-identical run to run.
+ *
+ * But only the shots containing that canvas need the slack. A desktop panel shot is framed on
+ * the `aside`: DOM text, no WebGL, byte-identical across runs. Those get a budget that would
+ * actually have caught the bold.
+ */
+const EXACT = { maxDiffPixels: 150, maxDiffPixelRatio: 0 } as const;
+
+/**
  * Photographs the details.
  *
  * On a desktop the panel is a column with a box of its own, and framing the shot to it shows the
- * content at a useful size. On a phone it is a sheet whose box runs past the bottom of the
- * screen, so the same framing would capture the page behind it: there, the screen is the shot.
+ * content at a useful size — and keeps the canvas out of frame, which is what lets it be held to
+ * `EXACT`. On a phone it is a sheet whose box runs past the bottom of the screen, so the same
+ * framing would capture the page behind it: there, the screen is the shot, canvas and all.
  */
 async function shotPanel(page: Page, name: string): Promise<void> {
   const phone = test.info().project.name === 'visual-phone';
   await (phone
     ? expect(page).toHaveScreenshot(name, FULL)
-    : expect(page.locator(PANEL)).toHaveScreenshot(name));
+    : expect(page.locator(PANEL)).toHaveScreenshot(name, EXACT));
 }
 
 /** Opens the app at a passage, with everything settled and the sheet up on a phone. */
