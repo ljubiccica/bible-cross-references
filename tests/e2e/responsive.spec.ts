@@ -6,6 +6,8 @@ const WIDTHS = [320, 360, 375, 390, 412, 430, 768, 834, 1024, 1280, 1440, 1920];
 
 test.describe('the layout holds at every width', () => {
   test.beforeEach(() => {
+    // The phone project does not run this file at all (see playwright.config.ts): these tests
+    // set the viewport themselves, so a second project would only repeat them.
     test.skip(test.info().project.name !== 'desktop', 'Widths are driven directly here.');
   });
 

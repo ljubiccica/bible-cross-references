@@ -53,7 +53,10 @@ export default defineConfig({
     {
       name: 'phone',
       use: { ...devices['Pixel 7'] },
-      testIgnore: /(offline|visual)\.spec\.ts/,
+      // `responsive` too: it drives the viewport itself, so every one of its tests skipped here
+      // at run time. A skipped test is not free — sharding counts it the same as a real one, so
+      // a few dozen of them sent one machine home early while the others were still working.
+      testIgnore: /(offline|visual|responsive)\.spec\.ts/,
     },
     // The offline tests install a service worker and edit the built `dist/sw.js` to stand in for
     // a new release, so they cannot share the site with anything else: their own project, running
