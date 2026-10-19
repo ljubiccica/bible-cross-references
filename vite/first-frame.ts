@@ -1,12 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
-import { atEndOfHead, pageOf, ROOT_DIR, SITE_NAME } from './site.ts';
+import { SITE_COPY } from '../src/i18n/site-copy.ts';
+import { atEndOfHead, pageOf, ROOT_DIR } from './site.ts';
 
 /** The logo's strokes (two arcs over a baseline), read from the favicon, its single source. */
 const LOGO_PATHS = [
   ...readFileSync(resolve(ROOT_DIR, 'public/favicon.svg'), 'utf8').matchAll(/\sd="([^"]+)"/g),
 ].map((match) => match[1] ?? '');
+
+function escapeText(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
 
 /** Styles for the first frame, inlined so that it needs no stylesheet or script. */
 const FIRST_FRAME_CSS = `
@@ -36,9 +41,15 @@ export function firstFrame(): Plugin {
     transformIndexHtml: {
       order: 'post',
       handler(html, context) {
-        if (!pageOf(context.path)) {
+        const page = pageOf(context.path);
+        if (!page) {
           return html;
         }
+        // The site's name in the page's own language. This is the only text on screen until
+        // React mounts, so on a Portuguese page it has to be the Portuguese name — otherwise a
+        // reader who opened `/pt/` spends the first second looking at an English title on a
+        // document that declares itself `lang="pt-BR"`.
+        const siteName = SITE_COPY[page.locale].siteName;
         if (!html.includes(root)) {
           throw new Error(
             `${context.path}: expected an empty ${root} to fill with the first frame.`,
@@ -57,7 +68,7 @@ export function firstFrame(): Plugin {
           html: withoutStylesheets
             .replace(
               root,
-              `<div id="root"><div class="first-frame">${logo}${SITE_NAME}</div></div>`,
+              `<div id="root"><div class="first-frame">${logo}${escapeText(siteName)}</div></div>`,
             )
             .replace('</body>', `${stylesheets.map((link) => `  ${link}\n`).join('')}</body>`),
           tags: atEndOfHead([

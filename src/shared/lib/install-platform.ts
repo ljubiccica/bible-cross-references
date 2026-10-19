@@ -1,5 +1,8 @@
 /** The devices the install guide has steps for; each has its own way of adding a web app. */
-export type InstallPlatform = 'ios' | 'android' | 'desktop';
+/** The devices the install guide has steps for. A list, so every one of them can be walked. */
+export const INSTALL_PLATFORMS = ['ios', 'android', 'desktop'] as const;
+
+export type InstallPlatform = (typeof INSTALL_PLATFORMS)[number];
 
 /**
  * Which set of steps to show first. It only picks a starting point — the guide lets the reader

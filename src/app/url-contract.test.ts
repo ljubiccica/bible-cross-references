@@ -8,6 +8,7 @@ import { DEFAULT_LINK_FILTER, VOTE_THRESHOLDS } from '../visualizations/shared/l
 import { defaultTranslationFor } from '../translations/default-for-locale.ts';
 import {
   explorerUrl,
+  localeUpgradeUrl,
   parseExplorerUrl,
   plainLocaleFor,
   type ViewRoute,
@@ -136,10 +137,52 @@ const SAVED: readonly (readonly [string, Partial<UrlState>])[] = [
   ['/bible-cross-references/?t=bsb', { translation: 'bsb' }],
   ['/bible-cross-references/?t=blivre', { translation: 'blivre' }],
 
-  // The language.
+  // The language in the query, which is how every link shared before the language paths
+  // existed names it. These are the rows that must never change: they are in people's
+  // bookmarks, in messages nobody can edit, and in a Brazilian reader's WhatsApp history.
   // The Portuguese Bible comes with the Portuguese interface for a reader who chose neither.
   ['/bible-cross-references/?lang=pt', { locale: 'pt', translation: 'blivre' }],
   ['/bible-cross-references/?lang=en', { locale: 'en' }],
+  [
+    '/bible-cross-references/threads/?lang=pt&ref=John.3.16',
+    { view: 'threads', ref: 'John.3.16', locale: 'pt', translation: 'blivre' },
+  ],
+
+  // The language in the path, which is where a link shared from now on carries it: a static
+  // host serves one file per path, so this is the only shape whose title, description and
+  // preview card are Portuguese before any JavaScript has run.
+  ['/bible-cross-references/pt/', { locale: 'pt', translation: 'blivre' }],
+  ['/bible-cross-references/pt', { locale: 'pt', translation: 'blivre' }],
+  ['/bible-cross-references/pt/index.html', { locale: 'pt', translation: 'blivre' }],
+  ['/bible-cross-references/pt/threads/', { view: 'threads', locale: 'pt', translation: 'blivre' }],
+  [
+    '/bible-cross-references/pt/threads/index.html',
+    { view: 'threads', locale: 'pt', translation: 'blivre' },
+  ],
+  [
+    '/bible-cross-references/pt/?ref=John.3.16',
+    { ref: 'John.3.16', locale: 'pt', translation: 'blivre' },
+  ],
+  ['/bible-cross-references/pt/?t=kjv', { locale: 'pt', translation: 'kjv' }],
+  [
+    '/bible-cross-references/pt/threads/?ref=John.3.16&votes=10&hide=law,acts&t=kjv',
+    {
+      view: 'threads',
+      ref: 'John.3.16',
+      minVotes: 10,
+      hidden: ['acts', 'law'],
+      translation: 'kjv',
+      locale: 'pt',
+    },
+  ],
+  // The path wins over a query that disagrees with it. The file served at this path was
+  // written in Portuguese — its title, its description and its `lang` were settled before the
+  // app ran — and no parameter can change what a crawler or a preview already read. Nothing
+  // saved is affected: no link predates the paths, so none carries both.
+  ['/bible-cross-references/pt/?lang=en', { locale: 'pt', translation: 'blivre' }],
+  // `/en/` is not a language path: English is served from the bare base, and no such file is
+  // ever written. It reads as the home view, which is what the host would serve anyway.
+  ['/bible-cross-references/en/', {}],
 
   // Everything at once, in both orders a URL can carry them.
   [
@@ -191,6 +234,11 @@ describe('saved URLs keep working', () => {
     }
     for (const id of LOCALE_IDS) {
       expect(rows).toContain(`lang=${id}`);
+    }
+    // And every language that has a path of its own has a row for it, so that adding a
+    // language without pinning its URLs fails here rather than in somebody's bookmark.
+    for (const id of LOCALE_IDS.filter((locale) => locale !== 'en')) {
+      expect(rows).toContain(`/${id}/`);
     }
     for (const { id } of TRANSLATION_MANIFESTS) {
       expect(rows).toContain(`t=${id}`);
@@ -247,16 +295,30 @@ describe('the URLs the app emits', () => {
   it('omits the language a reader would land on anyway, and keeps one they would not', () => {
     // The whole point of `plainLocaleFor`: for a reader whose own language is English, `?lang=en`
     // is noise; for a reader whose own language is Portuguese, dropping it changes what the link
-    // means — they would reopen it in Portuguese.
+    // means — they would reopen it in Portuguese. English has no path of its own, so it is still
+    // the query that carries it.
     expect(
       explorerUrl(HOME, place({ locale: 'en' }), BASE, kjv, DEFAULT_TRANSLATION_ID, 'en'),
     ).toBe(BASE);
     expect(
       explorerUrl(HOME, place({ locale: 'en' }), BASE, kjv, DEFAULT_TRANSLATION_ID, null),
     ).toBe(`${BASE}?lang=en`);
+  });
+
+  it('writes any other language as a path, not a parameter', () => {
+    // Changed deliberately, and the one change in this file's emission format: a `?lang=pt`
+    // link opens in Portuguese but previews in English everywhere it is shared, because a
+    // static host serves the same English file for every query. The path selects the
+    // Portuguese file instead. Links already written keep working — `SAVED` pins them — and
+    // `localeUpgradeUrl` moves them to this shape when one is opened.
     expect(
       explorerUrl(HOME, place({ locale: 'pt' }), BASE, kjv, DEFAULT_TRANSLATION_ID, 'en'),
-    ).toBe(`${BASE}?lang=pt`);
+    ).toBe(`${BASE}pt/`);
+    expect(explorerUrl(ROUTES[1], place({ locale: 'pt' }), BASE, kjv)).toBe(`${BASE}pt/threads/`);
+    // The path says it, so the query does not repeat it.
+    expect(
+      explorerUrl(HOME, place({ locale: 'pt' }), BASE, kjv, DEFAULT_TRANSLATION_ID, null),
+    ).not.toContain('lang=');
   });
 
   it('keeps the whole state in the order readers have in their bookmarks', () => {
@@ -275,7 +337,78 @@ describe('the URLs the app emits', () => {
         null,
         null,
       ),
-    ).toBe(`${BASE}threads/?ref=Isa.53&t=kjv&lang=pt&votes=10&hide=law,acts`);
+      // The language moved from `lang=pt` into the path; everything else is exactly as it was.
+    ).toBe(`${BASE}pt/threads/?ref=Isa.53&t=kjv&votes=10&hide=law,acts`);
+  });
+});
+
+/**
+ * Links shared before the language paths existed, quietly brought up to date.
+ *
+ * They keep working untouched — `SAVED` is the proof — but the shape a reader goes on to copy
+ * out of the address bar should be the one that previews in their language. This moves the
+ * language and nothing else: a tracking parameter, a fragment and the order of everything else
+ * survive, because the reader did not ask for their link to be tidied.
+ */
+describe('an old link upgrades itself', () => {
+  const upgrade = (url: string) =>
+    localeUpgradeUrl(new URL(url, 'https://trekhleb.dev'), BASE, ROUTES);
+
+  it('moves the language into the path', () => {
+    expect(upgrade(`${BASE}?lang=pt`)).toBe(`${BASE}pt/`);
+    expect(upgrade(`${BASE}threads/?lang=pt`)).toBe(`${BASE}pt/threads/`);
+    expect(upgrade(`${BASE}?lang=pt&ref=John.3.16`)).toBe(`${BASE}pt/?ref=John.3.16`);
+  });
+
+  it('keeps everything else the link was carrying', () => {
+    expect(upgrade(`${BASE}?lang=pt&ref=John.3.16&utm_source=whatsapp`)).toBe(
+      `${BASE}pt/?ref=John.3.16&utm_source=whatsapp`,
+    );
+    expect(upgrade(`${BASE}?lang=pt&ref=John.3.16#verse`)).toBe(`${BASE}pt/?ref=John.3.16#verse`);
+    expect(upgrade(`${BASE}threads/?lang=pt&votes=10&hide=law,acts`)).toBe(
+      `${BASE}pt/threads/?votes=10&hide=law,acts`,
+    );
+  });
+
+  it('leaves alone anything with nothing to move', () => {
+    expect(upgrade(BASE)).toBeNull();
+    expect(upgrade(`${BASE}?ref=John.3.16`)).toBeNull();
+    // English has no path of its own, so `?lang=en` stays where it is: it is not noise, it is
+    // what stops a Portuguese reader's own preference taking over an English link.
+    expect(upgrade(`${BASE}?lang=en`)).toBeNull();
+    expect(upgrade(`${BASE}?lang=fr`)).toBeNull();
+    // Already in the new shape.
+    expect(upgrade(`${BASE}pt/`)).toBeNull();
+    expect(upgrade(`${BASE}pt/?lang=pt`)).toBeNull();
+  });
+
+  it('refuses to invent a path this app does not serve', () => {
+    // Each of these used to be rewritten into something the host does not have: another
+    // deployment's page became this one's home, a doubled slash became a 404, and `/en/`
+    // — which is not a language path — became `/pt/en/`.
+    expect(upgrade('/somewhere-else/?lang=pt')).toBeNull();
+    expect(upgrade('/bible-cross-references?lang=pt')).toBeNull();
+    expect(upgrade(`${BASE}/threads/?lang=pt`)).toBeNull();
+    expect(upgrade(`${BASE}en/?lang=pt`)).toBeNull();
+    expect(upgrade(`${BASE}no-such-page/?lang=pt`)).toBeNull();
+  });
+
+  it('upgrades the paths it does serve, however they are spelled', () => {
+    expect(upgrade(`${BASE}index.html?lang=pt`)).toBe(`${BASE}pt/`);
+    expect(upgrade(`${BASE}threads?lang=pt`)).toBe(`${BASE}pt/threads/`);
+    expect(upgrade(`${BASE}threads/index.html?lang=pt`)).toBe(`${BASE}pt/threads/`);
+  });
+
+  it('upgrades to a URL that reads back as the same place', () => {
+    for (const url of [
+      `${BASE}?lang=pt`,
+      `${BASE}threads/?lang=pt&ref=John.3.16&t=kjv&votes=10`,
+      `${BASE}?lang=pt&ref=Isa.53&hide=law`,
+    ]) {
+      const upgraded = upgrade(url);
+      expect(upgraded).not.toBeNull();
+      expect(read(upgraded ?? url)).toEqual(read(url));
+    }
   });
 });
 

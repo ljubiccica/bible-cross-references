@@ -5,8 +5,15 @@ import { defineConfig } from 'vite';
 import { analytics } from './vite/analytics.ts';
 import { firstFrame } from './vite/first-frame.ts';
 import { offline } from './vite/offline.ts';
+import { writeLocaleEntries } from './vite/locale-entries.ts';
 import { DEPLOY_BASE, PAGES, ROOT_DIR, SITE_NAME, SITE_URL } from './vite/site.ts';
 import { siteHead } from './vite/site-head.ts';
+
+// Every language that is not the default needs a real HTML file for the bundler to take as an
+// input and for the dev server to serve, and those files are generated from `src/i18n/site-copy.ts`
+// rather than committed. Written here, before the config names its inputs, because by the time a
+// plugin runs the inputs have already been read.
+writeLocaleEntries();
 
 // https://vite.dev/config/
 export default defineConfig(({ command, isPreview = false }) => ({

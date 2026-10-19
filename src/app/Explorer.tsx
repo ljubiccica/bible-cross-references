@@ -34,6 +34,7 @@ import { translationDatasetPath } from '../core/datasets/paths.ts';
 import { cacheDatasets } from './register-offline-cache.ts';
 import { setActiveLocale, useLocalePreference, usePreferredLocale } from '../i18n/locale-choice.ts';
 import { getLocale } from '../i18n/registry.ts';
+import { localeManifestFileName } from '../i18n/locale-path.ts';
 import { useLocalization } from '../i18n/use-locale.tsx';
 import { VIEWS, type View } from './views.ts';
 
@@ -124,6 +125,13 @@ export function Explorer({ core }: { readonly core: VizCore }) {
   useLayoutEffect(() => {
     document.documentElement.lang = getLocale(localeId).tag;
     setActiveLocale(localeId);
+    // And the manifest, which decides what an install is called and where it opens. Choosing a
+    // language pushes a new address without reloading the document, so the English page is
+    // still the one loaded — installing from it would otherwise give an app named in English
+    // that opens at the English root, however Portuguese the address bar had become.
+    document
+      .querySelector('link[rel="manifest"]')
+      ?.setAttribute('href', `${import.meta.env.BASE_URL}${localeManifestFileName(localeId)}`);
   }, [localeId]);
 
   // Choosing a language records it for next time and puts it in the address, so the choice

@@ -6,10 +6,13 @@ import type { Plugin } from 'vite';
 import { describe, expect, it } from 'vitest';
 import { analytics } from './analytics.ts';
 import { firstFrame } from './first-frame.ts';
-import { offline } from './offline.ts';
-import { PAGES } from './site.ts';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { manifestFileName, offline } from './offline.ts';
+import { PAGE_LIST, PAGES, ROOT_DIR } from './site.ts';
+import { SITE_COPY, SITE_PAGE_IDS } from '../src/i18n/site-copy.ts';
 import { preloadScript, siteHead } from './site-head.ts';
-import { DEFAULT_LOCALE_ID, LOCALE_IDS } from '../src/i18n/locale-id.ts';
+import { DEFAULT_LOCALE_ID, LOCALE_IDS, type LocaleId } from '../src/i18n/locale-id.ts';
 import { translationDatasetPath } from '../src/core/datasets/paths.ts';
 import { defaultTranslationFor } from '../src/translations/default-for-locale.ts';
 import { initialChoice } from '../src/app/initial-choice.ts';
@@ -213,14 +216,16 @@ describe('offline', () => {
     await writeFile(join(dir, 'assets', 'main-abc.js'), 'console.log(1)');
     await writeFile(join(dir, 'assets', 'main-abc.css'), 'body{}');
     await writeFile(join(dir, 'assets', 'logo.woff2'), 'font');
-    await writeFile(join(dir, 'manifest.webmanifest'), '{}');
+    for (const locale of LOCALE_IDS) {
+      await writeFile(join(dir, manifestFileName(locale)), '{}');
+    }
     for (const icon of ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) {
       await writeFile(join(dir, icon), 'x');
     }
     for (const icon of ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png']) {
       await writeFile(join(dir, 'icons', icon), 'x');
     }
-    for (const page of Object.values(PAGES)) {
+    for (const page of PAGE_LIST) {
       await mkdir(join(dir, page.entry, '..'), { recursive: true });
       await writeFile(join(dir, page.entry), '<html></html>');
     }
@@ -237,10 +242,103 @@ describe('offline', () => {
     expect(files).toContain('assets/main-abc.css');
     // Anything the bundler emits, not only code and styles.
     expect(files).toContain('assets/logo.woff2');
-    expect(files).toContain('manifest.webmanifest');
+    for (const locale of LOCALE_IDS) {
+      expect(files).toContain(manifestFileName(locale));
+    }
     expect(files).not.toContain('sw.js');
     expect(worker).toContain('const VERSION = "');
-    expect(worker).toContain('const PAGES = ');
+    // Every language's pages are kept on the device, so a reader who installed the Portuguese
+    // app opens it offline in Portuguese rather than falling back to the English root.
+    const pages = JSON.parse(/const PAGES = (\[.*?\]);/s.exec(worker)?.[1] ?? '[]') as string[];
+    for (const page of PAGE_LIST.filter(({ app }) => app)) {
+      expect(pages).toContain(page.entry.replace(/index\.html$/, ''));
+    }
+    expect(pages).toContain('pt/');
+  });
+});
+
+/**
+ * The page's own words, in every language.
+ *
+ * These used to be read back out of the HTML with a regex, which meant reading text that had
+ * already been escaped once and escaping it again: a single `&` in a title reached WhatsApp,
+ * Twitter and the structured data as `&amp;amp;`. The copy is the source now, and these pin
+ * that it arrives verbatim.
+ */
+describe('the head a page is given', () => {
+  function headOf(page: { entry: string }): { html: string; tags: unknown[] } {
+    const plugin = siteHead();
+    resolveConfig(plugin, 'build', '/base/');
+    const result = hook(plugin, 'transformIndexHtml')(
+      '<html><head><title>t</title></head><body><div id="root"></div><noscript>x</noscript></body></html>',
+      { path: `/${page.entry}` },
+    );
+    return typeof result === 'string' ? { html: result, tags: [] } : result;
+  }
+
+  function contentOf(tags: unknown[], name: string): string | undefined {
+    const match = tags.find((tag) => {
+      const attrs = (tag as { attrs?: Record<string, string> }).attrs ?? {};
+      return attrs['property'] === name || attrs['name'] === name;
+    });
+    return (match as { attrs?: Record<string, string> } | undefined)?.attrs?.['content'];
+  }
+
+  it.each(PAGE_LIST.filter(({ listed }) => listed))(
+    'gives $entry its own title and description, exactly as written',
+    (page) => {
+      if (page.id === 'debug') {
+        return;
+      }
+      const copy = SITE_COPY[page.locale].pages[page.id];
+      const { tags } = headOf(page);
+      // Verbatim: not re-escaped, not taken from the English page, not the site name.
+      expect(contentOf(tags, 'og:title')).toBe(copy.title);
+      expect(contentOf(tags, 'twitter:title')).toBe(copy.title);
+      expect(contentOf(tags, 'og:description')).toBe(copy.description);
+      expect(contentOf(tags, 'og:locale')).toBe(SITE_COPY[page.locale].ogLocale);
+      expect(contentOf(tags, 'og:site_name')).toBe(SITE_COPY[page.locale].siteName);
+    },
+  );
+
+  it('escapes copy on its way into the page body rather than passing it through', () => {
+    // The `<noscript>` block is built from the copy directly, so it is the one place the copy
+    // becomes markup. Hostile punctuation has to come out as entities, exactly once.
+    const page = PAGE_LIST.find(({ listed }) => listed);
+    expect(page).toBeDefined();
+    const { html } = headOf(page ?? { entry: 'index.html' });
+    const noscript = /<noscript>([\s\S]*?)<\/noscript>/.exec(html)?.[1] ?? '';
+    expect(noscript).not.toContain('&amp;amp;');
+    expect(noscript).not.toContain('&amp;#');
+    // The apostrophe in the English description survives as itself inside element text.
+    expect(noscript.length).toBeGreaterThan(0);
+  });
+
+  it('tells a reader with no JavaScript what is wrong, in their own language', () => {
+    for (const page of PAGE_LIST.filter(({ listed }) => listed)) {
+      if (page.id === 'debug') {
+        continue;
+      }
+      const { html } = headOf(page);
+      expect(html).toContain(SITE_COPY[page.locale].pages[page.id].noscript);
+    }
+  });
+});
+
+describe('the committed English entries', () => {
+  /**
+   * `src/i18n/site-copy.ts` is the source of every page's words now, so the two HTML files that
+   * are still committed are a copy of it. If they drift, the file a reader is served says one
+   * thing and every `og:` tag beside it says another.
+   */
+  it.each(SITE_PAGE_IDS)('%s says what SITE_COPY.en says', (id) => {
+    const entry = id === 'main' ? 'index.html' : `${id}/index.html`;
+    const html = readFileSync(resolve(ROOT_DIR, entry), 'utf8');
+    const copy = SITE_COPY[DEFAULT_LOCALE_ID].pages[id];
+    const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? '';
+    const description = /<meta\s+name="description"\s+content="([^"]*)"/s.exec(html)?.[1] ?? '';
+    expect(title.replace('%SITE_NAME%', SITE_COPY[DEFAULT_LOCALE_ID].siteName)).toBe(copy.title);
+    expect(description.replaceAll(/\s+/g, ' ').trim()).toBe(copy.description);
   });
 });
 
@@ -258,6 +356,8 @@ describe('the inline preload script', () => {
     readonly search?: string;
     readonly stored?: Readonly<Record<string, string>>;
     readonly languages?: readonly string[];
+    /** The language of the file served, which a page under a language path has baked in. */
+    readonly pageLocale?: LocaleId | null;
   }): readonly string[] {
     const href = `https://trekhleb.dev/bible-cross-references/${options.search ?? ''}`;
     const store = options.stored ?? {};
@@ -279,7 +379,7 @@ describe('the inline preload script', () => {
       },
       URL,
     };
-    runInNewContext(preloadScript(PLAN), scope);
+    runInNewContext(preloadScript({ ...PLAN, pageLocale: options.pageLocale ?? null }), scope);
     return hrefs;
   }
 
@@ -297,6 +397,7 @@ describe('the inline preload script', () => {
     fallback: `/base/${translationDatasetPath(defaultTranslationFor(DEFAULT_LOCALE_ID))}`,
     localeKey: LOCALE_STORAGE_KEY,
     translationKey: TRANSLATION_STORAGE_KEY,
+    pageLocale: null,
   };
 
   /** What the app itself will load, from the one function that decides it. */
@@ -304,6 +405,7 @@ describe('the inline preload script', () => {
     readonly search?: string;
     readonly stored?: Readonly<Record<string, string>>;
     readonly languages?: readonly string[];
+    readonly pageLocale?: LocaleId | null;
   }): string {
     const url = new URL(`https://trekhleb.dev/bible-cross-references/${options.search ?? ''}`);
     const store = options.stored ?? {};
@@ -314,6 +416,7 @@ describe('the inline preload script', () => {
         translation: store[TRANSLATION_STORAGE_KEY] ?? null,
       },
       options.languages ?? ['en-US'],
+      options.pageLocale ?? null,
     );
     return `/base/${translationDatasetPath(translation)}`;
   }
@@ -332,6 +435,21 @@ describe('the inline preload script', () => {
       { search: '?t=bsb', stored: { [TRANSLATION_STORAGE_KEY]: 'kjv' } },
     ],
     ['a language the app does not speak', { search: '?lang=fr' }],
+    // The pages under a language path: their language is a fact about the file, so it outranks
+    // everything a reader brings with them.
+    ['a Portuguese page', { pageLocale: 'pt' as const }],
+    [
+      'a Portuguese page for a reader who stored English',
+      { pageLocale: 'pt' as const, stored: { [LOCALE_STORAGE_KEY]: 'en' } },
+    ],
+    [
+      'a Portuguese page in an English browser',
+      { pageLocale: 'pt' as const, languages: ['en-US'] },
+    ],
+    [
+      'a Portuguese page whose link names a translation',
+      { pageLocale: 'pt' as const, search: '?t=kjv' },
+    ],
   ])('preloads what the app will load, for %s', (_name, options) => {
     expect(preloadedBy(options)).toEqual([PLAN.shared, appWouldLoad(options)]);
   });

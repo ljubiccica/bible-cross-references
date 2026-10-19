@@ -27,7 +27,8 @@
     "check": "npm run typecheck && npm run typecoverage && npm run lint && npm run format:check && npm run test:coverage",
     "data": "npm run data:fetch && npm run data:build",
     "data:fetch": "node scripts/data/fetch.ts",
-    "data:build": "node scripts/data/build.ts"
+    "data:build": "node scripts/data/build.ts",
+    "locale:new": "node scripts/locale/new.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

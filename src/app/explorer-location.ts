@@ -10,6 +10,7 @@ import {
 } from '../visualizations/shared/link-filter.ts';
 import { LOCALE_PARAM, localeFromParams } from '../i18n/locale-choice.ts';
 import type { LocaleId } from '../i18n/locale-id.ts';
+import { localePathSegment, splitLocalePath } from '../i18n/locale-path.ts';
 import { DEFAULT_LOCALE_ID } from '../i18n/registry.ts';
 import { translationFromParams, TRANSLATION_PARAM } from './translation-choice.ts';
 
@@ -81,10 +82,15 @@ export function parseExplorerUrl<Id extends string>(
   defaultTranslation: (locale: LocaleId) => TranslationId,
   defaultLocale: LocaleId,
 ): ExplorerLocation<Id> {
-  const path = url.pathname.startsWith(base) ? normalizePath(url.pathname.slice(base.length)) : '';
+  const { locale: pathLocale, rest } = splitLocalePath(url.pathname, base);
+  const path = normalizePath(rest);
   const route = routes.find((candidate) => candidate.path === path) ?? routes[0];
   const id = url.searchParams.get(PASSAGE_PARAM);
-  const locale = localeFromParams(url.searchParams) ?? defaultLocale;
+  // The path wins over `?lang=`, because the file served at that path is already in that
+  // language: its title, its description and its `lang` were decided before the app ran, and a
+  // query parameter cannot change any of them. Nothing that was ever shared is affected — no
+  // link predates the language paths, so no saved link carries one.
+  const locale = pathLocale ?? localeFromParams(url.searchParams) ?? defaultLocale;
   return {
     view: route.id,
     passage: id === null ? null : (parsePassageOsisId(id, versification) ?? null),
@@ -139,6 +145,10 @@ export function explorerUrl(
   /** The language the URL need not name, for the same reason. See `plainLocaleFor`. */
   omitLocale: LocaleId | null = DEFAULT_LOCALE_ID,
 ): string {
+  // A language other than the default lives in the path, so the query need not repeat it. The
+  // default language has no segment of its own and keeps naming itself in the query where it has
+  // to — see `plainLocaleFor`.
+  const localeSegment = localePathSegment(locale);
   const params = new URLSearchParams();
   if (passage !== null) {
     params.set(PASSAGE_PARAM, toPassageOsisId(passage, versification));
@@ -146,7 +156,7 @@ export function explorerUrl(
   if (translation !== omitTranslation) {
     params.set(TRANSLATION_PARAM, translation);
   }
-  if (locale !== omitLocale) {
+  if (localeSegment === '' && locale !== omitLocale) {
     params.set(LOCALE_PARAM, locale);
   }
   if (filter.minVotes !== DEFAULT_LINK_FILTER.minVotes) {
@@ -158,5 +168,47 @@ export function explorerUrl(
   }
   // Commas are fine in a query and far more readable than %2C.
   const query = params.toString().replaceAll('%2C', ',');
-  return `${base}${route.path}${query === '' ? '' : `?${query}`}`;
+  return `${base}${localeSegment}${route.path}${query === '' ? '' : `?${query}`}`;
+}
+
+/**
+ * The same address with the language moved out of the query and into the path, or `null` where
+ * there is nothing to move.
+ *
+ * Links shared before the language paths existed name their language as `?lang=pt`, and they go
+ * on working exactly as they did. This quietly rewrites one in the address bar on arrival, so
+ * that the link the reader then copies, or the one their browser bookmarks, is the shape that
+ * previews in Portuguese when it is shared on. The rewrite itself moves one parameter and
+ * touches nothing else, `utm_` tags and the fragment included — though the first navigation the
+ * reader makes afterwards rebuilds the query from the app's own state, as it always has, and
+ * drops anything the app does not own.
+ */
+export function localeUpgradeUrl<Id extends string>(
+  url: URL,
+  base: string,
+  routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
+): string | null {
+  // Only ever rewrite an address this app actually serves. Without this the rewrite happily
+  // invented paths out of whatever it was given — a link from another deployment became this
+  // one's home page, a doubled slash became a URL that 404s, and `/base/en/` became `/base/pt/en/`.
+  if (!url.pathname.startsWith(base)) {
+    return null;
+  }
+  const { locale: pathLocale, rest } = splitLocalePath(url.pathname, base);
+  if (pathLocale !== null) {
+    return null;
+  }
+  const path = normalizePath(rest);
+  if (!routes.some((candidate) => candidate.path === path)) {
+    return null;
+  }
+  const locale = localeFromParams(url.searchParams);
+  const segment = locale === null ? '' : localePathSegment(locale);
+  if (segment === '') {
+    return null;
+  }
+  const params = new URLSearchParams(url.searchParams);
+  params.delete(LOCALE_PARAM);
+  const query = params.toString().replaceAll('%2C', ',');
+  return `${base}${segment}${path}${query === '' ? '' : `?${query}`}${url.hash}`;
 }

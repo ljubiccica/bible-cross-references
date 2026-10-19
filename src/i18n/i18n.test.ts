@@ -9,7 +9,7 @@ import {
 } from '../core/bible/book-lookup.ts';
 import { enBooks } from './books/en.ts';
 import { ptBooks } from './books/pt.ts';
-import { isLocaleId, LOCALE_IDS, matchLocale, type LocaleId } from './locale-id.ts';
+import { isLocaleId, LOCALE_IDS, matchLocale } from './locale-id.ts';
 import { en } from './messages/en.ts';
 import type { Emphasized } from './messages/types.ts';
 import { DEFAULT_LOCALE_ID, getLocale, LOCALE_LIST } from './registry.ts';
@@ -74,18 +74,25 @@ describe('the message catalogues', () => {
 
   it('counts in the language’s own way, singular and plural', () => {
     const more = message(getLocale('pt'), 'panel.moreVerses');
-    expect(more('1', 1)).toContain('1 versículo');
-    expect(more('3', 3)).toContain('3 versículos');
+    // `toBe`, not `toContain`: `'+ 1 versículos'` contains `'1 versículo'`, so the substring
+    // form passed just as happily on a message that had no singular at all.
+    expect(more('1', 1)).toBe('+ 1 versículo');
+    expect(more('3', 3)).toBe('+ 3 versículos');
   });
 
   /**
-   * Languages whose catalogue is allowed to be incomplete, with the English fallback showing
-   * through. Being on this list is a decision — a half-translated language is better than none
-   * — and being off it is a promise that CI keeps.
+   * Every language, with no way off the list.
+   *
+   * There used to be a `WORK_IN_PROGRESS` exemption here, on the reasoning that a
+   * half-translated language beats none. It does not: a language the app offers is a language a
+   * reader chooses, and choosing Portuguese and getting English menus is worse than not being
+   * offered it. The English fallback in `translate.ts` stays — it is what keeps a catalogue
+   * being written from crashing — but it is a safety net, not a way to ship.
+   *
+   * `completeness.test.ts` is the fuller version of this: it checks not only that every key is
+   * there but that none of them is blank or still English.
    */
-  const WORK_IN_PROGRESS: readonly LocaleId[] = [];
-
-  it.each(LOCALE_LIST.filter((locale) => !WORK_IN_PROGRESS.includes(locale.id)))(
+  it.each(LOCALE_LIST)(
     'translates every English key into $id, so nothing is half-done in a shipped language',
     (locale) => {
       const missing = Object.keys(en).filter((key) => !(key in locale.messages));

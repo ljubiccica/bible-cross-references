@@ -60,6 +60,8 @@ interface BookIndex {
   readonly exact: ReadonlyMap<string, Book>;
   /** Keyed on the accent-folded form; a key two books share is dropped rather than guessed. */
   readonly folded: ReadonlyMap<string, Book>;
+  /** Spellings that folding brings together, which therefore have to be typed with their accents. */
+  readonly contested: readonly string[];
   readonly byName: readonly { readonly book: Book; readonly names: readonly string[] }[];
   /** Spellings two books both claim. Empty for every catalogue the app ships; see below. */
   readonly collisions: readonly string[];
@@ -112,6 +114,7 @@ function buildIndex(names: BookNames): BookIndex {
   return {
     exact,
     folded,
+    contested: [...contested].toSorted(),
     byName: BOOKS.map((book) => ({ book, names: namesOf(book, names).map(foldBookName) })),
     // A book's id, name, reference name and abbreviation often share one spelling, so the same
     // clash is met several times over; the reader of this list wants it once.
@@ -128,6 +131,20 @@ function buildIndex(names: BookNames): BookIndex {
  */
 export function bookNameCollisions(names: BookNames): readonly string[] {
   return indexFor(names).collisions;
+}
+
+/**
+ * The spellings in a catalogue that two books share once their accents are folded away, e.g. `jo`
+ * in Portuguese, which `Jó` (Job) and `Jo` (João) both reach.
+ *
+ * These are the spellings where the accent is the whole of the meaning, so typing one without it
+ * cannot be answered — the reader is shown the candidates instead. They are also the cases a
+ * language's acceptance table has to pin (see `src/i18n/books/acceptance.ts`): a collision is
+ * resolved by whichever book claims the unaccented spelling exactly, and nothing else in the
+ * build would notice if that ever changed hands.
+ */
+export function contestedSpellings(names: BookNames): readonly string[] {
+  return indexFor(names).contested;
 }
 
 // One index per set of names, built the first time that language is used.

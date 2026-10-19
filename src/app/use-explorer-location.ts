@@ -4,6 +4,7 @@ import type { TranslationId } from '../core/datasets/ids.ts';
 import type { LocaleId } from '../i18n/locale-id.ts';
 import {
   explorerUrl,
+  localeUpgradeUrl,
   parseExplorerUrl,
   plainLocaleFor,
   plainTranslationFor,
@@ -43,6 +44,25 @@ export function useExplorerLocation<Id extends string>(
     [routes, versification, defaultTranslation, defaultLocale],
   );
   const [location, setLocation] = useState(read);
+
+  // A link shared before the language paths existed says `?lang=pt`. It still opens in
+  // Portuguese — `parseExplorerUrl` reads the parameter exactly as it always has — and this
+  // moves the language into the path afterwards, without a navigation and without touching
+  // anything else the address carries, so that the link the reader goes on to copy or bookmark
+  // is the one that previews in Portuguese. Replace, never push: pressing Back must leave the
+  // app, not undo a rewrite the reader never asked for.
+  useEffect(() => {
+    const upgraded = localeUpgradeUrl(
+      new URL(window.location.href),
+      import.meta.env.BASE_URL,
+      routes,
+    );
+    if (upgraded !== null) {
+      window.history.replaceState(null, '', upgraded);
+    }
+    // Once, on arrival. `routes` is a module constant, so this does not re-run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const syncFromUrl = () => {

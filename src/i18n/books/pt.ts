@@ -3,10 +3,20 @@ import type { BookNames } from './types.ts';
 /**
  * The books in Portuguese.
  *
- * Aliases are the abbreviations a Brazilian reader actually types. They are matched after
- * accents are folded away, so `Jó` is found by `jo`, `Gênesis` by `genesis`, and none of them
- * needs an accented spelling here. Exact matches beat prefixes, which is what keeps `jo` meaning
- * Jó rather than being ambiguous between Jó, Joel, João, Jonas and Josué.
+ * Aliases are the abbreviations a Brazilian reader actually types. Most are matched after accents
+ * are folded away — `Gênesis` is found by `genesis`, `Josué` by `josue` — so an entry here needs
+ * no accents of its own.
+ *
+ * `Jo` and `Jó` are the exception, and the reason `lookupBook` matches what was typed before it
+ * folds anything: `Jo` is the usual abbreviation for **João**, and `Jó` is **Job**. One accent is
+ * the whole difference between two books. Each claims its own spelling exactly, so each is found
+ * exactly; folding would bring them together, and a folded spelling two books share is dropped
+ * rather than guessed at (`contestedSpellings`).
+ *
+ * Which of them `jo` reaches is therefore decided by João's abbreviation claiming it, and nothing
+ * in the build would notice if that ever changed hands — so it is pinned by a case a Brazilian
+ * reader signed off on, in `src/i18n/books/acceptance.ts`. Change an abbreviation here and that
+ * is what tells you.
  */
 export const ptBooks: BookNames = {
   Gen: { name: 'Gênesis', abbreviation: 'Gn', aliases: ['gn', 'gen'] },
