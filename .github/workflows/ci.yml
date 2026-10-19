@@ -67,17 +67,23 @@ jobs:
   # chapter, following a cross-reference, the original-language words, switching translation, the
   # layout at twelve widths, and the browser's own Back and Forward.
   #
-  # Split across machines because this is nearly the whole pipeline: the suite is seven minutes
-  # of the roughly eight the pipeline takes, and splitting is the only lever that does not trade
-  # away what the tests prove.
+  # Split across machines because this is nearly the whole pipeline, and splitting is the only
+  # lever that does not trade away what the tests prove.
+  #
+  # Five, from measurement rather than instinct: the suite is about 30 minutes of machine time
+  # on a runner, and each shard pays only ~30s of checkout, install and artifact download, so
+  # the overhead is under 2% a shard and more of them keep helping for a while. The floor is the
+  # `offline` job beside this one at ~3.5 minutes — once a shard is quicker than that, `deploy`
+  # is waiting on offline instead and further shards buy nothing. Five lands around six minutes,
+  # comfortably clear of it.
   e2e:
-    name: End-to-end tests (${{ matrix.shard }}/3)
+    name: End-to-end tests (${{ matrix.shard }}/5)
     needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -104,7 +110,7 @@ jobs:
       - name: Install the browser
         run: npx playwright install --with-deps chromium
       - name: Run the reader's flows
-        run: npx playwright test --project=desktop --project=phone --shard=${{ matrix.shard }}/3
+        run: npx playwright test --project=desktop --project=phone --shard=${{ matrix.shard }}/5
       - name: Keep the report when something failed
         if: failure()
         uses: actions/upload-artifact@v7
