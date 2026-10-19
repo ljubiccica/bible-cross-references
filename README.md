@@ -151,9 +151,10 @@ The app is built on openly licensed datasets only:
 | Original words   | [STEPBible](https://github.com/STEPBible/STEPBible-Data) (TAHOT, TAGNT and their lexicons), from Tyndale House, Cambridge             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                      |
 
 A note on the KJV: it is public domain in the United States and most of the world, but in the
-United Kingdom rights in the Authorized Version are vested in the Crown and administered by the
-Crown's patentee, Cambridge University Press, under letters patent that do not expire. The app
-says so where the translation is chosen. It is offered alongside the BSB, never instead of it, and
+United Kingdom letters patent that do not expire reserve the right to **print** it, and to import
+printed copies, to the Crown's patentees — Cambridge University Press, Oxford University Press
+and Collins. That is a restriction on printing rather than on a web page, and it has no effect
+outside the UK. The app says so where the translation is chosen. It is offered alongside the BSB, never instead of it, and
 its text is only downloaded for readers who ask for it.
 
 A note on the Bíblia Livre: it is an independent volunteer translation, updated from João Ferreira
@@ -333,12 +334,13 @@ The code is released under the [MIT License](LICENSE). The data keeps its own li
 > Scripture Knowledge. Modified: re-indexed to KJV verse numbering.
 > Scripture text: Berean Standard Bible (BSB), dedicated to the public domain.
 > Scripture text: King James Version (Authorized Version), the 1769 text, public domain in the
-> United States and most of the world; in the United Kingdom rights are vested in the Crown and
-> administered by the Crown's patentee, Cambridge University Press.
+> United States and most of the world; in the United Kingdom, letters patent reserve the right to
+> print it to the Crown's patentees — Cambridge University Press, Oxford University Press and
+> Collins.
 > Scripture text: Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles,
 > fevereiro de 2018, <http://sites.google.com/site/biblialivre/>, licensed under CC BY 3.0 Brasil
-> (<http://creativecommons.org/licenses/by/3.0/br/>). Modified: the spacing around colons is
-> normalized in 270 verses, which moves whitespace only.
+> (<http://creativecommons.org/licenses/by/3.0/br/>). Modified: whitespace is normalized in 271
+> verses, which moves whitespace only.
 > Original-language words: STEP Bible (CC BY 4.0), based on work at Tyndale House, Cambridge.
 > Modified: reduced to the dictionary forms used in each verse, keyed to KJV verse numbering,
 > with psalm superscriptions left out.

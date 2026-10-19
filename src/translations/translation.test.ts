@@ -59,3 +59,18 @@ describe('normalizeForSearch', () => {
     expect(normalizeForSearch('  “Lord’s”   Prayer ')).toBe('"lord\'s" prayer');
   });
 });
+
+describe("searching text that carries the translators' brackets", () => {
+  it('finds a phrase that runs through a supplied word', () => {
+    // The KJV sets supplied words in brackets — `The LORD [is] my shepherd`. Nobody types them.
+    expect(normalizeForSearch('The LORD [is] my shepherd')).toBe('the lord is my shepherd');
+  });
+
+  it('finds one in the Portuguese text too', () => {
+    expect(normalizeForSearch('ele[ antes] possuía')).toBe('ele antes possuía');
+  });
+
+  it('still folds case and quote styles', () => {
+    expect(normalizeForSearch('God’s [own] “Son”')).toBe('god\'s own "son"');
+  });
+});

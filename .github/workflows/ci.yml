@@ -11,8 +11,26 @@ permissions:
   contents: read
 
 jobs:
+  # Types, type coverage, lint, formatting and the unit tests with their coverage thresholds
+  # (98% of statements, lines and functions — see vite.config.ts). Type coverage is a separate
+  # gate from `tsc`: strict mode stops TypeScript inferring `any` quietly, but a value can still
+  # arrive as one from an untyped boundary and spread from there.
+  #
+  # None of it reads the generated datasets, so it runs beside the build rather than before it.
   check:
-    name: Type check, lint, format, test, build
+    name: Type check, lint, format, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  build:
+    name: Build the site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -32,12 +50,6 @@ jobs:
         with:
           path: data/raw
           key: raw-data-${{ hashFiles('data/sources.json') }}
-      # Types, type coverage, lint, formatting and the unit tests with their coverage
-      # thresholds (98% of statements, lines and functions — see vite.config.ts). Type coverage
-      # is a separate gate from `tsc`: strict mode stops TypeScript inferring `any` quietly, but
-      # a value can still arrive as one from an untyped boundary and spread. Any of them failing
-      # fails the job, and with it the pull request.
-      - run: npm run check
       - run: npm run build
       - name: Keep the built site for the end-to-end tests
         uses: actions/upload-artifact@v7
@@ -53,11 +65,66 @@ jobs:
 
   # The flows a reader actually goes through, in a real browser against the built site: reading a
   # chapter, following a cross-reference, the original-language words, switching translation, the
-  # layout at twelve widths, and the offline cache — including that a new release replaces an old
-  # one, which is the one failure that could strand an audience on a stale version.
+  # layout at twelve widths, and the browser's own Back and Forward.
+  #
+  # Split across machines because this is nearly the whole pipeline: the suite is seven minutes
+  # of the roughly eight the pipeline takes, and splitting is the only lever that does not trade
+  # away what the tests prove.
   e2e:
-    name: End-to-end tests
-    needs: check
+    name: End-to-end tests (${{ matrix.shard }}/3)
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Take the site the build job made
+        uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: dist
+      # The browser is ~130 MB and the same for every run until Playwright itself is upgraded,
+      # so it is cached on the lockfile rather than downloaded five times a pipeline.
+      - name: Cache the browser
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      # Only Chromium: the suite tests this app's behaviour, not browser differences, and the
+      # service worker and WebGL both need a real engine rather than three of them. The system
+      # libraries it links against are not in the cache, so that part runs either way.
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Run the reader's flows
+        run: npx playwright test --project=desktop --project=phone --shard=${{ matrix.shard }}/3
+      - name: Keep the report when something failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ matrix.shard }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  # The offline cache, including that a new release replaces an old one — the one failure that
+  # could strand an audience on a stale version.
+  #
+  # Its own job because these tests edit the built `dist/sw.js` to stand in for a new release,
+  # so they cannot share a served site with anything else. A machine to themselves is a cleaner
+  # way to get that than the project dependency they use locally, which is why `--no-deps`:
+  # nothing else is running here to wait for.
+  offline:
+    name: Offline cache
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -66,21 +133,24 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Take the site the check job built
+      - name: Take the site the build job made
         uses: actions/download-artifact@v8
         with:
           name: site
           path: dist
-      # Only Chromium: the suite tests this app's behaviour, not browser differences, and the
-      # service worker and WebGL both need a real engine rather than three of them.
+      - name: Cache the browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install the browser
         run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: npx playwright test --project=offline --no-deps
       - name: Keep the report when something failed
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-offline
           path: |
             playwright-report
             test-results
@@ -91,7 +161,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [check, e2e]
+    needs: [check, build, e2e, offline]
     runs-on: ubuntu-latest
     permissions:
       pages: write

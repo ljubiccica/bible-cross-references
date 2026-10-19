@@ -56,13 +56,13 @@ export const en = {
   'attribution.bsb': 'Scripture text: Berean Standard Bible (BSB), dedicated to the public domain.',
   'attribution.kjv':
     'Scripture text: King James Version (Authorized Version), the 1769 text. Public domain in ' +
-    'the United States and most of the world; in the United Kingdom rights are vested in the ' +
-    'Crown and administered by the Crown’s patentee, Cambridge University Press.',
+    'the United States and most of the world; in the United Kingdom, letters patent reserve ' +
+    'the right to print it to the Crown’s patentees — Cambridge University Press, Oxford ' +
+    'University Press and Collins.',
   'attribution.blivre':
     'Scripture text: Bíblia Livre (BLIVRE), © Diego Santos, Mario Sérgio and Marco Teles, ' +
     'February 2018 (Textus Receptus edition), https://sites.google.com/site/biblialivre/. ' +
-    'Changed: colon spacing was normalized — a space before a colon moved to after it, and a ' +
-    'missing space after one inserted.',
+    'Changed: whitespace was normalized; no word was altered.',
   'license.publicDomain': 'Public domain',
   'menu.translation': 'Translation',
   'menu.translation.failed': (name: string) => `${name} could not be loaded.`,

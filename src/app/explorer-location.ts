@@ -64,26 +64,33 @@ function normalizePath(path: string): string {
 /**
  * Reads the view, the passage, the filter and the translation from a URL. Unknown paths show the
  * home view (the first route), an unknown passage shows none, and unknown filter values keep the
- * defaults. A URL naming no translation (or one the app does not have) shows `defaultTranslation`,
- * which is the reader's own choice from an earlier visit.
+ * defaults.
+ *
+ * `defaultTranslation` is a function of the language rather than a value, because the two are not
+ * independent: a reader who has never chosen a translation should get the one that matches the
+ * language they are reading in. Resolving the language first and asking for its translation
+ * afterwards is what keeps the two in step — ask a store instead and a URL reached by pressing
+ * Back can answer with last page's language, which is how a `?lang=pt` entry ended up showing the
+ * Portuguese interface over the English Bible.
  */
 export function parseExplorerUrl<Id extends string>(
   url: URL,
   base: string,
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
-  defaultTranslation: TranslationId,
+  defaultTranslation: (locale: LocaleId) => TranslationId,
   defaultLocale: LocaleId,
 ): ExplorerLocation<Id> {
   const path = url.pathname.startsWith(base) ? normalizePath(url.pathname.slice(base.length)) : '';
   const route = routes.find((candidate) => candidate.path === path) ?? routes[0];
   const id = url.searchParams.get(PASSAGE_PARAM);
+  const locale = localeFromParams(url.searchParams) ?? defaultLocale;
   return {
     view: route.id,
     passage: id === null ? null : (parsePassageOsisId(id, versification) ?? null),
     filter: parseFilter(url.searchParams),
-    translation: translationFromParams(url.searchParams) ?? defaultTranslation,
-    locale: localeFromParams(url.searchParams) ?? defaultLocale,
+    translation: translationFromParams(url.searchParams) ?? defaultTranslation(locale),
+    locale,
   };
 }
 
@@ -94,6 +101,19 @@ export function parseExplorerUrl<Id extends string>(
  */
 export function plainTranslationFor(preferred: TranslationId): TranslationId | null {
   return preferred === DEFAULT_TRANSLATION_ID ? DEFAULT_TRANSLATION_ID : null;
+}
+
+/**
+ * The language a URL need not name for this reader, on the same reasoning as the translation
+ * above: a URL naming none is read in the reader's own language, so the only language safe to
+ * leave out is the one they would land on anyway.
+ *
+ * Without this, an address that explicitly says `?lang=en` loses it the first time the app
+ * rebuilds the URL — and the next read fills the gap from the reader's own preference instead,
+ * so a Portuguese reader following an English link is quietly moved back to Portuguese.
+ */
+export function plainLocaleFor(preferred: LocaleId): LocaleId | null {
+  return preferred === DEFAULT_LOCALE_ID ? DEFAULT_LOCALE_ID : null;
 }
 
 /**
@@ -116,6 +136,8 @@ export function explorerUrl(
    * a link meant for someone else needs — their choice must not quietly replace its text.
    */
   omitTranslation: TranslationId | null = DEFAULT_TRANSLATION_ID,
+  /** The language the URL need not name, for the same reason. See `plainLocaleFor`. */
+  omitLocale: LocaleId | null = DEFAULT_LOCALE_ID,
 ): string {
   const params = new URLSearchParams();
   if (passage !== null) {
@@ -124,7 +146,7 @@ export function explorerUrl(
   if (translation !== omitTranslation) {
     params.set(TRANSLATION_PARAM, translation);
   }
-  if (locale !== DEFAULT_LOCALE_ID) {
+  if (locale !== omitLocale) {
     params.set(LOCALE_PARAM, locale);
   }
   if (filter.minVotes !== DEFAULT_LINK_FILTER.minVotes) {

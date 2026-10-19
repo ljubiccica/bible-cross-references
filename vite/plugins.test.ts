@@ -1,4 +1,5 @@
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Plugin } from 'vite';
@@ -7,7 +8,13 @@ import { analytics } from './analytics.ts';
 import { firstFrame } from './first-frame.ts';
 import { offline } from './offline.ts';
 import { PAGES } from './site.ts';
-import { siteHead } from './site-head.ts';
+import { preloadScript, siteHead } from './site-head.ts';
+import { DEFAULT_LOCALE_ID, LOCALE_IDS } from '../src/i18n/locale-id.ts';
+import { translationDatasetPath } from '../src/core/datasets/paths.ts';
+import { defaultTranslationFor } from '../src/translations/default-for-locale.ts';
+import { initialChoice } from '../src/app/initial-choice.ts';
+import { TRANSLATION_MANIFESTS } from '../src/translations/registry.ts';
+import { LOCALE_STORAGE_KEY, TRANSLATION_STORAGE_KEY } from '../src/shared/lib/preference-keys.ts';
 
 const APP_PAGE = Object.values(PAGES).find((page) => page.app);
 const PAGE_PATH = `/${APP_PAGE?.entry ?? 'index.html'}`;
@@ -234,5 +241,140 @@ describe('offline', () => {
     expect(files).not.toContain('sw.js');
     expect(worker).toContain('const VERSION = "');
     expect(worker).toContain('const PAGES = ');
+  });
+});
+
+describe('the inline preload script', () => {
+  /**
+   * Runs the generated script the way a browser would, and reports what it preloaded.
+   *
+   * The script is a second implementation of a rule the app already owns, written as a string
+   * because it has to run before any module parses. The only way to keep the two honest is to
+   * execute it and compare its answer to the real function — which is how three disagreements
+   * were found the first time, including one that downloaded an extra 3.8 MB on every shared
+   * link that named a translation.
+   */
+  function preloadedBy(options: {
+    readonly search?: string;
+    readonly stored?: Readonly<Record<string, string>>;
+    readonly languages?: readonly string[];
+  }): readonly string[] {
+    const href = `https://trekhleb.dev/bible-cross-references/${options.search ?? ''}`;
+    const store = options.stored ?? {};
+    const hrefs: string[] = [];
+    const scope = {
+      navigator: {
+        serviceWorker: { controller: null },
+        languages: options.languages ?? ['en-US'],
+      },
+      location: { href },
+      localStorage: { getItem: (key: string) => store[key] ?? null },
+      document: {
+        createElement: () => ({ rel: '', as: '', crossOrigin: '', href: '' }),
+        head: {
+          append: (link: { href: string }) => {
+            hrefs.push(link.href);
+          },
+        },
+      },
+      URL,
+    };
+    runInNewContext(preloadScript(PLAN), scope);
+    return hrefs;
+  }
+
+  const PLAN = {
+    shared: '/base/data/cross-references/openbible.json',
+    byTranslation: Object.fromEntries(
+      TRANSLATION_MANIFESTS.map((manifest) => [
+        manifest.id,
+        `/base/${translationDatasetPath(manifest.id)}`,
+      ]),
+    ),
+    byLocale: Object.fromEntries(
+      LOCALE_IDS.map((id) => [id, `/base/${translationDatasetPath(defaultTranslationFor(id))}`]),
+    ),
+    fallback: `/base/${translationDatasetPath(defaultTranslationFor(DEFAULT_LOCALE_ID))}`,
+    localeKey: LOCALE_STORAGE_KEY,
+    translationKey: TRANSLATION_STORAGE_KEY,
+  };
+
+  /** What the app itself will load, from the one function that decides it. */
+  function appWouldLoad(options: {
+    readonly search?: string;
+    readonly stored?: Readonly<Record<string, string>>;
+    readonly languages?: readonly string[];
+  }): string {
+    const url = new URL(`https://trekhleb.dev/bible-cross-references/${options.search ?? ''}`);
+    const store = options.stored ?? {};
+    const { translation } = initialChoice(
+      url.searchParams,
+      {
+        locale: store[LOCALE_STORAGE_KEY] ?? null,
+        translation: store[TRANSLATION_STORAGE_KEY] ?? null,
+      },
+      options.languages ?? ['en-US'],
+    );
+    return `/base/${translationDatasetPath(translation)}`;
+  }
+
+  it.each([
+    ['a plain visit', {}],
+    ['a link naming a translation', { search: '?t=kjv' }],
+    ['a link naming a language', { search: '?lang=pt' }],
+    ['a link naming both', { search: '?t=kjv&lang=pt' }],
+    ['a Portuguese browser', { languages: ['pt-BR'] }],
+    ['a browser shouting its tag', { languages: ['PT-BR'] }],
+    ['a stored translation', { stored: { [TRANSLATION_STORAGE_KEY]: 'kjv' } }],
+    ['a stored language', { stored: { [LOCALE_STORAGE_KEY]: 'pt' } }],
+    [
+      'a stored translation and a link naming another',
+      { search: '?t=bsb', stored: { [TRANSLATION_STORAGE_KEY]: 'kjv' } },
+    ],
+    ['a language the app does not speak', { search: '?lang=fr' }],
+  ])('preloads what the app will load, for %s', (_name, options) => {
+    expect(preloadedBy(options)).toEqual([PLAN.shared, appWouldLoad(options)]);
+  });
+
+  it('is not fooled by a parameter that names something on Object.prototype', () => {
+    // `lang in byLocale` found `toString` and preloaded a URL built from a function's source.
+    for (const key of ['toString', 'constructor', '__proto__', 'valueOf', 'hasOwnProperty']) {
+      expect(preloadedBy({ search: `?lang=${key}` })).toEqual([PLAN.shared, PLAN.fallback]);
+      expect(preloadedBy({ search: `?t=${key}` })).toEqual([PLAN.shared, PLAN.fallback]);
+    }
+  });
+
+  it('does nothing at all when the offline cache is already serving the page', () => {
+    const hrefs: string[] = [];
+    runInNewContext(preloadScript(PLAN), {
+      navigator: { serviceWorker: { controller: {} }, languages: ['en-US'] },
+      location: { href: 'https://trekhleb.dev/bible-cross-references/' },
+      localStorage: { getItem: () => null },
+      document: {
+        createElement: () => ({}),
+        head: { append: (link: { href: string }) => hrefs.push(link.href) },
+      },
+      URL,
+    });
+    expect(hrefs).toEqual([]);
+  });
+
+  it('survives a browser that refuses storage, rather than taking the page down with it', () => {
+    const hrefs: string[] = [];
+    runInNewContext(preloadScript(PLAN), {
+      navigator: { serviceWorker: { controller: null }, languages: ['en-US'] },
+      location: { href: 'https://trekhleb.dev/bible-cross-references/' },
+      localStorage: {
+        getItem: () => {
+          throw new Error('storage is disabled');
+        },
+      },
+      document: {
+        createElement: () => ({ rel: '', as: '', crossOrigin: '', href: '' }),
+        head: { append: (link: { href: string }) => hrefs.push(link.href) },
+      },
+      URL,
+    });
+    expect(hrefs).toEqual([PLAN.shared, PLAN.fallback]);
   });
 });

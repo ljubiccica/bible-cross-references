@@ -18,6 +18,7 @@ import { importEbibleVerseLines } from './importers/ebible-vpl.ts';
 import { importOpenBibleCrossReferences } from './importers/openbible.ts';
 import { getWordSourceManifest } from '../../src/words/registry.ts';
 import { importStepBibleWords, type TaggedLanguage } from './importers/stepbible.ts';
+import { expectMember } from './lib/sources.ts';
 import { extractZipTextEntry } from './lib/files.ts';
 import type { RawSource } from './lib/sources.ts';
 
@@ -57,7 +58,10 @@ const TRANSLATION_BUILDERS: Readonly<Record<TranslationId, DatasetBuilder>> = {
     outputPath: translationDatasetPath('kjv'),
     build: async (readSource) => {
       const { source, content } = await readSource('kjv');
-      const text = extractZipTextEntry(content, 'eng-kjv2006_vpl.txt');
+      // The entry the pin covers, read from the pin rather than repeated here: naming a
+      // different one would mean the digest guarded a file the build never reads, and the
+      // scripture would ship unverified with nothing to say so.
+      const text = extractZipTextEntry(content, expectMember(source));
       return importEbibleVerseLines(text, 'kjv', {
         ...provenanceOf(source),
         snapshotDate: null,

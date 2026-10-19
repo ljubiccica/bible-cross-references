@@ -18,10 +18,23 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 /**
- * The floor. The figure has been above 99.9% since this was written, so this is not a target to
- * creep down to — it is the point at which a slide stops being gradual and fails the build.
+ * The floor, as a percentage.
+ *
+ * It is the number asked for, and it is the weaker of the two gates: 2% of ~30,000 identifiers
+ * is around 600 untyped values, so on its own this would not fire until something had gone very
+ * wrong indeed. `DEFAULT_MAX_UNTYPED` is what actually holds the line day to day.
  */
 const DEFAULT_MINIMUM = 98;
+
+/**
+ * The real ratchet: how many values the checker may fail to type, in absolute terms.
+ *
+ * Four today, all of them irreducible — two Three.js uniforms, `event.data` on a worker message,
+ * and the TypeScript API's own `readConfigFile`. The allowance is small enough that adding an
+ * untyped value is a decision somebody has to make on purpose, by editing this line and saying
+ * why in the commit.
+ */
+const DEFAULT_MAX_UNTYPED = 6;
 
 /** The projects `tsconfig.json` references: the app, the build scripts, the worker, the e2e suite. */
 function projectPaths(): string[] {
@@ -127,6 +140,11 @@ const minimum = atLeastIndex === -1 ? DEFAULT_MINIMUM : Number(argv[atLeastIndex
 if (!Number.isFinite(minimum) || minimum < 0 || minimum > 100) {
   throw new Error('--at-least takes a percentage between 0 and 100.');
 }
+const atMostIndex = argv.indexOf('--at-most');
+const allowance = atMostIndex === -1 ? DEFAULT_MAX_UNTYPED : Number(argv[atMostIndex + 1]);
+if (!Number.isInteger(allowance) || allowance < 0) {
+  throw new Error('--at-most takes a whole number of identifiers.');
+}
 const list = argv.includes('--list');
 
 let identifiers = 0;
@@ -140,7 +158,10 @@ for (const path of projectPaths()) {
 
 const covered = identifiers - untyped.length;
 const percentage = (covered / identifiers) * 100;
-console.log(`type coverage: ${percentage.toFixed(4)}% (${covered}/${identifiers} identifiers)`);
+console.log(
+  `type coverage: ${percentage.toFixed(4)}% (${String(untyped.length)} of ${identifiers} identifiers untyped, ` +
+    `allowance ${String(allowance)})`,
+);
 
 if (list && untyped.length > 0) {
   for (const finding of untyped) {
@@ -148,7 +169,7 @@ if (list && untyped.length > 0) {
   }
 }
 
-if (percentage < minimum) {
+if (percentage < minimum || untyped.length > allowance) {
   const byFile = new Map<string, number>();
   for (const finding of untyped) {
     byFile.set(finding.file, (byFile.get(finding.file) ?? 0) + 1);
@@ -161,6 +182,6 @@ if (percentage < minimum) {
     console.error(`  ${String(count).padStart(4)}  ${file}`);
   }
   console.error('\nRun with --list to see each one. Give the value a type rather than raising');
-  console.error('the floor: an `any` here spreads to everything it touches.');
+  console.error('the allowance: an `any` here spreads to everything it touches.');
   process.exit(1);
 }

@@ -415,10 +415,17 @@
 .section {
   display: grid;
   gap: var(--space-2);
+  /* A grid item will not shrink below its content unless told to, and the band below is wider
+     than this section on purpose. Without this the track grows to fit it and the whole panel
+     scrolls sideways — which is what a longer language does to it. */
+  min-inline-size: 0;
 }
 
 .sectionHeader {
   position: sticky;
+  /* Same reason, one level down: the band may be wider than the section and still must not set
+     the panel's width. What does not fit is ellipsised, by `.sectionNote`. */
+  min-inline-size: 0;
   /* The panel's own top padding sits above the scrollport, so the band is pulled up by exactly
      that much: nothing shows in the gap as content passes beneath it. */
   inset-block-start: calc(var(--space-3) * -1);

@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { preferenceKey } from './preference-keys.ts';
 
 /**
  * Small per-reader preferences, kept in localStorage so they last between visits.
@@ -9,7 +10,6 @@ import { useCallback, useSyncExternalStore } from 'react';
  * - Every component using a preference sees its changes at once, including other tabs.
  */
 
-const PREFIX = 'bible-cross-references:';
 const memory = new Map<string, string>();
 const listeners = new Set<() => void>();
 
@@ -44,21 +44,21 @@ function subscribe(listener: () => void): () => void {
 }
 
 function read(key: string): string | null {
-  const stored = memory.get(PREFIX + key);
+  const stored = memory.get(preferenceKey(key));
   if (stored !== undefined) {
     return stored;
   }
   try {
-    return localStorage.getItem(PREFIX + key);
+    return localStorage.getItem(preferenceKey(key));
   } catch {
     return null;
   }
 }
 
 function write(key: string, value: string): void {
-  memory.set(PREFIX + key, value);
+  memory.set(preferenceKey(key), value);
   try {
-    localStorage.setItem(PREFIX + key, value);
+    localStorage.setItem(preferenceKey(key), value);
   } catch {
     // Unavailable: the value lasts for this visit only.
   }

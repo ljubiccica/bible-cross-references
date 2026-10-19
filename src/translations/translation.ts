@@ -15,9 +15,21 @@ export interface TextSearchResult {
   readonly verses: readonly VerseIndex[];
 }
 
-/** Normalizes text for case- and quote-style-insensitive matching (`God’s` matches `god's`). */
+/**
+ * Normalizes text for case- and quote-style-insensitive matching (`God’s` matches `god's`).
+ *
+ * Square brackets go too. They mark the words a translator supplied and are kept in the text on
+ * purpose, but nobody searching for "the Lord is my shepherd" types the brackets the KJV puts
+ * around `[is]` — leaving them in makes every phrase that crosses a supplied word unfindable.
+ */
 export function normalizeForSearch(text: string): string {
-  return text.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
+  return text
+    .toLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** A bundled translation's full text, addressed by verse index. */
