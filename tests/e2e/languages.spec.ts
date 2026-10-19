@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ACTIVE, PANEL, openPanel, waitForApp } from './helpers.ts';
+import { LOCALE_IDS } from '../../src/i18n/locale-id.ts';
 
 /** Opens the app in a language, with the details of a passage in view. */
 async function open(page: Page, query: string): Promise<void> {
@@ -79,6 +80,11 @@ test.describe('choosing a language', () => {
     const menu = page.locator(ACTIVE).getByRole('radiogroup', { name: 'Translation' });
     await expect(menu.getByText('English', { exact: true })).toBeVisible();
     await expect(menu.getByText('Português', { exact: true })).toBeVisible();
+    // Including the languages the interface itself does not speak: a Bible and a set of menus
+    // are separate things, and a group heading here is the only place that shows it.
+    await expect(menu.getByText('Deutsch', { exact: true })).toBeVisible();
+    await expect(menu.getByText('Italiano', { exact: true })).toBeVisible();
+    await expect(menu.getByText('Español', { exact: true })).toBeVisible();
     await expect(menu.getByRole('radio', { name: /Bíblia Livre/ })).toBeVisible();
   });
 
@@ -239,4 +245,92 @@ test.describe('a link shared the old way', () => {
     // `?lang=en` is not noise: it is what stops a Portuguese reader's own preference taking over.
     await expect(page).toHaveURL(/lang=en/);
   });
+});
+
+/**
+ * Ukrainian has an interface and no Bible of its own. That combination is the one the rest of
+ * this file never exercises — Portuguese has both — and it is the half that is easy to break,
+ * because every path that chooses a Bible is keyed on the interface language.
+ */
+test.describe('a language with no Bible of its own', () => {
+  test('serves its own page, in its own language, before any script runs', async ({ request }) => {
+    const response = await request.get('./uk/');
+    expect(response.ok()).toBe(true);
+    const html = await response.text();
+    expect(html).toContain('lang="uk"');
+    expect(html).toContain('Перехресні посилання Біблії');
+  });
+
+  test('opens in Ukrainian and keeps the default Bible', async ({ page }) => {
+    await open(page, 'uk/');
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Переклад/ })).toContainText(
+      'BSB',
+    );
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Фільтри/ })).toBeVisible();
+  });
+
+  test('reads a reference typed in Ukrainian', async ({ page }) => {
+    await open(page, 'uk/');
+    await page.locator(ACTIVE).getByRole('searchbox').fill('Івана 3:16');
+    await page.locator(ACTIVE).getByRole('searchbox').press('Enter');
+    await expect(page).toHaveURL(/ref=John\.3\.16/);
+  });
+
+  test('can read a German Bible under Ukrainian menus', async ({ page }) => {
+    // The two settings are independent, and this is the pairing that proves it: neither
+    // language has anything to do with the other.
+    await open(page, 'uk/?t=luther1912');
+    await expect(page.locator(ACTIVE).getByRole('button', { name: /Переклад/ })).toContainText(
+      'LUT',
+    );
+  });
+});
+
+/**
+ * Nothing in the chrome runs off the right edge, in any language, on either size of screen.
+ *
+ * Here rather than in `responsive.spec.ts`, which the phone project ignores on purpose, and
+ * this has to run on a phone: the gesture hints swap on `(hover: none) and (pointer: coarse)`,
+ * a property of the browser context rather than of the viewport, so a desktop page narrowed to
+ * 412px still shows the mouse wording. The line that overflowed in German, Spanish and
+ * Ukrainian — "gedrückt halten für die Vorschau · zum Auswählen · zum Zoomen" — is the touch
+ * one, and no amount of resizing a desktop window would have shown it.
+ *
+ * Measured, not photographed. The screens this sits on also carry the arcs, which a software
+ * renderer draws differently run to run, so their snapshots allow 2% of the pixels — about
+ * 7,500 on a phone. Three languages ran a line of text off the edge for less than that, so the
+ * images compared equal while the app was visibly wrong. A number has no such tolerance.
+ */
+test.describe('the chrome fits, in every language', () => {
+  for (const language of LOCALE_IDS) {
+    test(`${language}: nothing reaches past the right edge`, async ({ page }) => {
+      await page.goto(`./?lang=${language}`);
+      await waitForApp(page);
+
+      const measured = await page
+        .locator(`${ACTIVE} [class*="stats"]`)
+        .first()
+        .evaluate((stats) => ({
+          width: window.innerWidth,
+          // Two signals, because one of them alone missed this. A line that does not wrap paints
+          // past its own box without the box growing, so the *container's* own rect stays inside
+          // the window and only its scrollable width gives it away; and the rows themselves are
+          // spans holding other elements, so measuring leaf nodes — which was the first attempt —
+          // measures the bits that sit safely inside and never the row that sticks out.
+          overflow: stats.scrollWidth - stats.clientWidth,
+          widest: Math.round(
+            Math.max(
+              stats.getBoundingClientRect().right,
+              ...[...stats.children]
+                .filter((row) => row.getBoundingClientRect().width > 0)
+                .map((row) => row.getBoundingClientRect().right),
+            ),
+          ),
+        }));
+      expect(measured.overflow, `${language}: the stats scroll sideways`).toBe(0);
+      expect(measured.widest, `${language}: a row of the stats`).toBeLessThanOrEqual(
+        measured.width,
+      );
+    });
+  }
 });

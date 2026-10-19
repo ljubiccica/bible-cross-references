@@ -4,7 +4,7 @@ import { relative, resolve } from 'node:path';
 import { transformWithOxc, type Plugin } from 'vite';
 import { DATASET_SCHEMA_VERSION } from '../src/core/datasets/formats.ts';
 import { DATASETS_DIRECTORY } from '../src/core/datasets/paths.ts';
-import { vizDatasetPaths } from '../src/visualizations/shared/viz-datasets.ts';
+import { sharedDatasetPaths } from '../src/visualizations/shared/viz-datasets.ts';
 import { LOCALE_IDS, type LocaleId } from '../src/i18n/locale-id.ts';
 import { localeManifestFileName, localePathSegment } from '../src/i18n/locale-path.ts';
 import { SITE_COPY } from '../src/i18n/site-copy.ts';
@@ -39,7 +39,14 @@ function webAppManifest(locale: LocaleId) {
   const { manifest } = SITE_COPY[locale];
   const start = `./${localePathSegment(locale)}`;
   return {
-    id: start,
+    // No `id`. Every other URL here is resolved against the manifest, but `id` is resolved
+    // against the *origin* of `start_url` (appmanifest §"id", step 4: "Let base origin be
+    // manifest["start_url"]'s origin"), so the `./de/` that looks right beside `start_url`
+    // would identify this app as `https://trekhleb.dev/de/` — outside the app's own path, and
+    // in English's case `https://trekhleb.dev/` itself, the identity any manifest at the root
+    // of the domain would claim. Left out, `id` defaults to the resolved `start_url`, which is
+    // what was meant. An installed app keeps the identity it was installed under forever, so
+    // this is worth getting right before a language ships rather than after.
     name: manifest.name,
     short_name: manifest.shortName,
     description: manifest.description,
@@ -133,20 +140,28 @@ export function offline(): Plugin {
         version.update(readFileSync(resolve(outDir, fileName)));
       }
       for (const { entry } of PAGE_LIST) {
+        // The name as well as the bytes, so that two pages trading contents is a change.
+        version.update(entry);
         // The built page, not its source: it carries the inlined first frame and the head tags.
         version.update(readFileSync(resolve(outDir, entry)));
       }
 
-      const worker = await transformWithOxc(
-        readFileSync(resolve(ROOT_DIR, 'sw/service-worker.ts'), 'utf8'),
-        'service-worker.ts',
-        { lang: 'ts' },
-      );
+      const workerSource = readFileSync(resolve(ROOT_DIR, 'sw/service-worker.ts'), 'utf8');
+      // The worker itself belongs in the hash, and it is the one input easy to leave out:
+      // everything else here is something the worker *caches*, and this is the worker doing the
+      // caching. Left out, a release whose only change is to this file keeps the same
+      // `SHELL_CACHE` name, `activate` finds nothing to delete and `store` skips every URL that
+      // is already there — so the one release that cannot clear a bad shell cache is the release
+      // shipped to fix it. That is precisely the cache nobody can invalidate.
+      version.update(workerSource);
+
+      const worker = await transformWithOxc(workerSource, 'service-worker.ts', { lang: 'ts' });
       const injected = [
         `const PAGES = ${JSON.stringify(pages)};`,
         `const FILES = ${JSON.stringify([...files, ...OFFLINE_PUBLIC_FILES])};`,
-        `const DATASETS = ${JSON.stringify(vizDatasetPaths())};`,
+        `const DATASETS = ${JSON.stringify(sharedDatasetPaths())};`,
         `const DATA_DIRECTORY = ${JSON.stringify(DATASETS_DIRECTORY)};`,
+        `const ASSETS_DIRECTORY = ${JSON.stringify(ASSETS_DIRECTORY)};`,
         `const VERSION = ${JSON.stringify(version.digest('hex').slice(0, 16))};`,
         `const SCHEMA_VERSION = ${JSON.stringify(DATASET_SCHEMA_VERSION)};`,
       ].join('\n');

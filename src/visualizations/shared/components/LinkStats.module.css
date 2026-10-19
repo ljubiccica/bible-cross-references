@@ -4,6 +4,12 @@
   inset-inline-end: var(--space-3);
   z-index: 1;
   display: grid;
+  /* One column, and a column that cannot outgrow the corner it sits in. `grid` gives an auto
+     column the width of its widest item's min-content, and `.hint` is `nowrap`, so its
+     min-content *is* its whole length — the column grew past the container and carried the
+     right-aligned numbers off the screen with it. German, Spanish and Ukrainian all ran off
+     the right edge of a phone this way while English, whose hint is shorter, fitted. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   justify-items: end;
   margin: 0;
@@ -30,6 +36,11 @@
   gap: var(--space-1);
   margin-block-start: var(--space-1);
   white-space: nowrap;
+}
+
+/* An icon and the words that belong to it stay together; the groups wrap between themselves. */
+.hint > * {
+  flex: 0 0 auto;
 }
 
 .touchHint {
@@ -64,5 +75,11 @@
 
   .hint {
     margin-block-start: 0;
+    /* A phone is too narrow to promise one line in every language. The groups keep their own
+       words beside their own icon (`.hint > *` above) and wrap between each other instead of
+       running off the edge. */
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    white-space: normal;
   }
 }

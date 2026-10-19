@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ACTIVE, PANEL, collectErrors, openPanel, waitForApp } from './helpers.ts';
+import { LOCALE_IDS } from '../../src/i18n/locale-id.ts';
 
 /** Every width the layout has to survive, from the oldest phone to a wide desktop. */
 const WIDTHS = [320, 360, 375, 390, 412, 430, 768, 834, 1024, 1280, 1440, 1920];
@@ -42,39 +43,49 @@ test.describe('the layout holds at every width', () => {
   }
 
   /**
-   * The same widths in every other language the app speaks.
+   * Every width, in every language the app speaks.
    *
    * English is held to one line, above: it is the language the layout is designed around and the
    * one most readers see. A translation cannot be held to that — Portuguese runs about a fifth
    * longer, and the clause that pushes it over is the CC BY credit, which is a licence condition
    * and not something to drop on a narrow screen. So the promise here is weaker and still worth
    * keeping: never more than two lines, and never off the edge.
+   *
+   * One test per language, resizing between measurements, rather than one per width reloading
+   * the app in each language. The app was loaded 72 times that way, and when the sixth language
+   * arrived the tests stopped fitting in their timeout and the suite went red on the clock
+   * rather than on the layout. Nothing is lost by resizing: these are CSS media queries, and a
+   * reflow is exactly what a reader turning their phone gets.
    */
-  for (const width of WIDTHS) {
-    test(`${String(width)}px: a longer language wraps rather than overflowing`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width, height: 800 });
-      await page.goto('./?lang=pt');
+  for (const language of LOCALE_IDS) {
+    test(`${language}: the footer fits at every width`, async ({ page }) => {
+      await page.goto(`./?lang=${language}`);
       await waitForApp(page);
-
-      const measured = await page.locator(`${ACTIVE} footer`).evaluate((footer) => {
-        const rect = footer.getBoundingClientRect();
-        const children = [...footer.children].map((child) => child.getBoundingClientRect());
-        return {
-          height: Math.round(rect.height),
-          right: Math.round(rect.right),
-          rows: new Set(children.map((child) => Math.round(child.top))).size,
-          widest: Math.round(Math.max(...children.map((child) => child.right))),
-        };
-      });
-
-      expect(measured.rows).toBeLessThanOrEqual(2);
-      // Two lines of the same 24px row, with a little room for the gap between them.
-      expect(measured.height).toBeLessThan(64);
-      expect(measured.right).toBeLessThanOrEqual(width);
-      expect(measured.widest).toBeLessThanOrEqual(width);
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 800 });
+        await expectFooterFits(page, width, language);
+      }
     });
+  }
+
+  async function expectFooterFits(page: Page, width: number, language: string): Promise<void> {
+    const measured = await page.locator(`${ACTIVE} footer`).evaluate((footer) => {
+      const rect = footer.getBoundingClientRect();
+      const children = [...footer.children].map((child) => child.getBoundingClientRect());
+      return {
+        height: Math.round(rect.height),
+        right: Math.round(rect.right),
+        rows: new Set(children.map((child) => Math.round(child.top))).size,
+        widest: Math.round(Math.max(...children.map((child) => child.right))),
+      };
+    });
+
+    const where = `${language} at ${String(width)}px`;
+    expect(measured.rows, where).toBeLessThanOrEqual(2);
+    // Two lines of the same 24px row, with a little room for the gap between them.
+    expect(measured.height, where).toBeLessThan(64);
+    expect(measured.right, where).toBeLessThanOrEqual(width);
+    expect(measured.widest, where).toBeLessThanOrEqual(width);
   }
 
   /**
@@ -83,45 +94,16 @@ test.describe('the layout holds at every width', () => {
    * The band at the top of each section bleeds past the panel's padding on purpose, so it is
    * wider than its own parent. That is fine until a grid item refuses to shrink below it: then
    * the track grows, and the whole panel scrolls sideways with the counts pushed off the right
-   * edge. A longer language is what makes it visible, which is why this runs in both.
+   * edge. A longer language is what makes it visible, which is why this runs in all of them.
    */
-  /**
-   * Every language the app offers, read from the picker rather than listed here.
-   *
-   * Listing them means the next language is only covered when somebody remembers to add a line,
-   * and the whole point of this test is the language nobody thought about. Asking the app which
-   * languages it has covers one the day it ships.
-   */
-  async function languagesTheAppOffers(page: Page): Promise<readonly string[]> {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('./');
-    await waitForApp(page);
-    await page
-      .locator(ACTIVE)
-      .getByRole('button', { name: /Translation/ })
-      .click();
-    const picker = page.locator(ACTIVE).getByRole('combobox');
-    if ((await picker.count()) === 0) {
-      return ['en'];
-    }
-    return picker
-      .first()
-      .locator('option')
-      .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
-  }
+  for (const language of LOCALE_IDS) {
+    test(`${language}: the panel does not scroll sideways at any width`, async ({ page }) => {
+      await page.goto(`./?lang=${language}&ref=2Cor.11`);
+      await waitForApp(page);
+      await openPanel(page);
 
-  for (const width of WIDTHS) {
-    test(`${String(width)}px: the panel does not scroll sideways, in any language`, async ({
-      page,
-    }) => {
-      const languages = await languagesTheAppOffers(page);
-      expect(languages.length).toBeGreaterThan(0);
-
-      for (const language of languages) {
+      for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 800 });
-        await page.goto(`./?lang=${language}&ref=2Cor.11`);
-        await waitForApp(page);
-        await openPanel(page);
 
         const measured = await page.locator(`${ACTIVE} aside`).evaluate((aside) => {
           const scroller = aside.querySelector('[class*="scroll"]') ?? aside;
@@ -210,6 +192,57 @@ test.describe('the layout holds at every width', () => {
       .toBeLessThan(Math.round(before?.y ?? 0));
   });
 
+  /**
+   * The band between a phone and a wide desktop, in every language the app offers.
+   *
+   * `VizPage.module.css` and `controls.module.css` each carry a rule keyed on the literal
+   * language — the only two in the app — because the header's width depends on how long the
+   * words are, and a language whose name for the site runs twenty characters against English's
+   * sixteen needs the masthead on a row of its own. Nothing else can enforce that, so the
+   * promise is made here instead: whatever the language, the header's contents stay inside the
+   * window and the controls stay on screen. A fourth language that is not added to those rules
+   * fails this rather than shipping a cramped header nobody happens to open at this width.
+   */
+  for (const language of LOCALE_IDS) {
+    test(`${language}: the header fits between a small laptop and a wide one`, async ({ page }) => {
+      await page.goto(`./?lang=${language}`);
+      await waitForApp(page);
+
+      for (const width of [1024, 1280, 1366]) {
+        await page.setViewportSize({ width, height: 800 });
+
+        const header = page.locator(`${ACTIVE} header`).first();
+        const measured = await header.evaluate((element) => {
+          const parts = [...element.querySelectorAll('*')].filter(
+            (child) => child.childElementCount === 0 && child.getBoundingClientRect().width > 0,
+          );
+          return {
+            right: Math.round(element.getBoundingClientRect().right),
+            widest: Math.round(
+              Math.max(...parts.map((part) => part.getBoundingClientRect().right)),
+            ),
+            bottom: Math.round(element.getBoundingClientRect().bottom),
+          };
+        });
+
+        const where = `${language} at ${String(width)}px`;
+        expect(measured.right, `${where}: header`).toBeLessThanOrEqual(width);
+        expect(measured.widest, `${where}: header contents`).toBeLessThanOrEqual(width);
+        // Three rows of controls would mean the masthead rule is not applying: the header is
+        // meant to settle at one row, or two once the masthead takes its own.
+        expect(measured.bottom, `${where}: header height`).toBeLessThan(140);
+        // Both menus still on screen. Found by their shape — a header button that opens a
+        // popover — rather than by their names: a regex of every language's word for "Filters"
+        // had already fallen behind by three languages, and a name that matches nothing makes
+        // this assertion fail for a reason that has nothing to do with the layout.
+        const menus = page.locator(`${ACTIVE} header button[aria-expanded]`);
+        await expect(menus, `${where}: both menus`).toHaveCount(2);
+        await expect(menus.first(), where).toBeVisible();
+        await expect(menus.last(), where).toBeVisible();
+      }
+    });
+  }
+
   test('the header keeps its controls reachable on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('./');
@@ -232,6 +265,61 @@ test.describe('every page loads cleanly', () => {
       await page.goto(path);
       await page.locator(ready).first().waitFor({ timeout: 45_000 });
       expect(errors).toEqual([]);
+    });
+  }
+});
+
+/**
+ * The corner summary over the canvas, in every language, at every width — on a desktop and on
+ * a phone, because the two do not show the same words.
+ *
+ * Its own block, outside the one above, so that the phone project runs it too. `.touchHint` and
+ * `.pointerHint` swap on `(hover: none) and (pointer: coarse)`, which is a property of the
+ * browser context and not of the viewport: resizing a desktop page to 412px still shows the
+ * mouse wording. The hint that overflowed — "gedrückt halten für die Vorschau · zum Auswählen ·
+ * zum Zoomen" — is the touch one, so a check that only ever ran on the desktop project could
+ * not see it however narrow it made the window. Measured in both, it is seen in the one where
+ * it happens.
+ *
+ * Measured rather than looked at, too. The shots that contain this also contain the arcs, which
+ * a software renderer draws differently run to run, so they carry a 2% pixel budget — about
+ * 7,500 pixels on a phone. A line of text running off the right edge in three languages cost
+ * fewer than that, so the snapshots compared equal while the app was visibly wrong, and the
+ * images on disk went on showing a layout that no longer existed. A number has no tolerance.
+ */
+test.describe('the stats in the corner', () => {
+  for (const language of LOCALE_IDS) {
+    test(`${language}: stay inside the window at every width`, async ({ page }) => {
+      await page.goto(`./?lang=${language}`);
+      await waitForApp(page);
+
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 800 });
+
+        const measured = await page
+          .locator(`${ACTIVE} [class*="stats"]`)
+          .first()
+          .evaluate((stats) => ({
+            width: window.innerWidth,
+            // Two signals, because one of them alone missed this. A line that does not wrap paints
+            // past its own box without the box growing, so the *container's* own rect stays inside
+            // the window and only its scrollable width gives it away; and the rows themselves are
+            // spans holding other elements, so measuring leaf nodes — which was the first attempt —
+            // measures the bits that sit safely inside and never the row that sticks out.
+            overflow: stats.scrollWidth - stats.clientWidth,
+            widest: Math.round(
+              Math.max(
+                stats.getBoundingClientRect().right,
+                ...[...stats.children]
+                  .filter((row) => row.getBoundingClientRect().width > 0)
+                  .map((row) => row.getBoundingClientRect().right),
+              ),
+            ),
+          }));
+        const where = `${language} at ${String(width)}px`;
+        expect(measured.overflow, `${where}: the stats scroll sideways`).toBe(0);
+        expect(measured.widest, `${where}: a row of the stats`).toBeLessThanOrEqual(width);
+      }
     });
   }
 });

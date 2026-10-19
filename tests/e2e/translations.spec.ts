@@ -48,6 +48,45 @@ test.describe('translations', () => {
     );
   });
 
+  /**
+   * The two translations that are read but whose language the interface does not speak. Nothing
+   * about choosing a Bible depends on the app having menus in that language, and this is what
+   * says so: a German reader gets German scripture under English menus.
+   */
+  test.describe('a Bible in a language the interface does not speak', () => {
+    const CASES = [
+      { id: 'luther1912', radio: /Lutherbibel 1912/, group: 'Deutsch', says: /eingeborenen Sohn/ },
+      {
+        id: 'riveduta1927',
+        radio: /Riveduta 1927/,
+        group: 'Italiano',
+        says: /unigenito Figliuolo/,
+      },
+      { id: 'vbl', radio: /Versión Biblia Libre/, group: 'Español', says: /su único Hijo/ },
+    ] as const;
+
+    for (const { id, radio, group, says } of CASES) {
+      test(`${id} is offered under ${group}, and its text is what loads`, async ({ page }) => {
+        await openPassage(page, 'John.3.16');
+        await page
+          .locator(ACTIVE)
+          .getByRole('button', { name: /Translation/ })
+          .click();
+        const menu = page.locator(ACTIVE).getByRole('radiogroup', { name: 'Translation' });
+        await expect(menu.getByText(group, { exact: true })).toBeVisible();
+        await menu.getByRole('radio', { name: radio }).check();
+
+        await expect(page).toHaveURL(new RegExp(`t=${id}`));
+        await expect(page.locator(PANEL)).toContainText(says);
+      });
+
+      test(`a link naming ${id} opens in it`, async ({ page }) => {
+        await openPassage(page, 'John.3.16', `&t=${id}`);
+        await expect(page.locator(PANEL)).toContainText(says);
+      });
+    }
+  });
+
   test('the credit in the footer follows the translation on screen', async ({ page }) => {
     await page.goto('./');
     await waitForApp(page);

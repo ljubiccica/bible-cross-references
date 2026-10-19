@@ -153,7 +153,7 @@ describe('the gate catches a language that is not finished', () => {
     const problems = problemsOf({
       messages: { ...sound.messages, 'reference.unknownBook': () => 'Livro desconhecido.' },
     });
-    expect(found(problems, 'messages', 'reference.unknownBook')?.detail).toContain('drops «arg1»');
+    expect(found(problems, 'messages', 'reference.unknownBook')?.detail).toContain('drops «argA»');
   });
 
   it('a message that throws', () => {
@@ -380,8 +380,22 @@ describe('the gate catches a language that is not finished', () => {
       },
     });
     expect(found(problems, 'messages', 'panel.moreVerses')?.detail).toContain(
-      'the same for one as for many',
+      'the same for one, two and five',
     );
+  });
+
+  it('allows a language whose singular and plural coincide, if it inflects somewhere', () => {
+    // Ukrainian «посилання» is the same word for one and for two, and only changes at five.
+    // Demanding a difference between one and two would force that catalogue into bad Ukrainian
+    // to satisfy a rule about English.
+    const problems = problemsOf({
+      messages: {
+        ...sound.messages,
+        'panel.moreVerses': (count: string, plural: number) =>
+          `+ ${count} ${plural >= 5 ? 'посилань' : 'посилання'}`,
+      },
+    });
+    expect(found(problems, 'messages', 'panel.moreVerses')).toBeUndefined();
   });
 
   it('a message that produces nothing at all', () => {
@@ -529,9 +543,11 @@ describe('the gate catches a language that is not finished', () => {
     // Every message, every book and every genre is reported, so nothing is silently accepted.
     const where = (name: string) => problems.filter((problem) => problem.where === name).length;
     expect(where('messages')).toBeGreaterThan(100);
-    // A name left in English for each, and a short form missing for each: English itself needs
-    // none, so a language that copied it has sixty-six books labelled by their OSIS ids.
-    expect(where('books')).toBe(132);
+    // A name left in English for each and a short form missing for each — English itself needs
+    // none, so a language that copied it has sixty-six books labelled by their OSIS ids — plus
+    // the two the whole catalogue is judged on: Psalms' citation name, still English, and the
+    // short forms taken together.
+    expect(where('books')).toBe(134);
     expect(where('genres')).toBe(10);
   });
 
@@ -617,9 +633,11 @@ describe('the gate catches a language that is not finished', () => {
     // Every message, every book and every genre is reported, so nothing is silently accepted.
     const where = (name: string) => problems.filter((problem) => problem.where === name).length;
     expect(where('messages')).toBeGreaterThan(100);
-    // A name left in English for each, and a short form missing for each: English itself needs
-    // none, so a language that copied it has sixty-six books labelled by their OSIS ids.
-    expect(where('books')).toBe(132);
+    // A name left in English for each and a short form missing for each — English itself needs
+    // none, so a language that copied it has sixty-six books labelled by their OSIS ids — plus
+    // the two the whole catalogue is judged on: Psalms' citation name, still English, and the
+    // short forms taken together.
+    expect(where('books')).toBe(134);
     expect(where('genres')).toBe(10);
   });
 });

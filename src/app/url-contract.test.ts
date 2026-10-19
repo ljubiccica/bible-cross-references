@@ -136,6 +136,9 @@ const SAVED: readonly (readonly [string, Partial<UrlState>])[] = [
   ['/bible-cross-references/?t=kjv', { translation: 'kjv' }],
   ['/bible-cross-references/?t=bsb', { translation: 'bsb' }],
   ['/bible-cross-references/?t=blivre', { translation: 'blivre' }],
+  ['/bible-cross-references/?t=luther1912', { translation: 'luther1912' }],
+  ['/bible-cross-references/?t=riveduta1927', { translation: 'riveduta1927' }],
+  ['/bible-cross-references/?t=vbl', { translation: 'vbl' }],
 
   // The language in the query, which is how every link shared before the language paths
   // existed names it. These are the rows that must never change: they are in people's
@@ -143,6 +146,14 @@ const SAVED: readonly (readonly [string, Partial<UrlState>])[] = [
   // The Portuguese Bible comes with the Portuguese interface for a reader who chose neither.
   ['/bible-cross-references/?lang=pt', { locale: 'pt', translation: 'blivre' }],
   ['/bible-cross-references/?lang=en', { locale: 'en' }],
+  // Ukrainian has an interface and no Bible of its own, so it keeps the default text. That is
+  // the whole point of the two being separate settings, and this is where it is pinned.
+  // The three languages that have both an interface and a Bible of their own: naming the
+  // language is enough, and the Bible follows.
+  ['/bible-cross-references/?lang=de', { locale: 'de', translation: 'luther1912' }],
+  ['/bible-cross-references/?lang=it', { locale: 'it', translation: 'riveduta1927' }],
+  ['/bible-cross-references/?lang=es', { locale: 'es', translation: 'vbl' }],
+  ['/bible-cross-references/?lang=uk', { locale: 'uk' }],
   [
     '/bible-cross-references/threads/?lang=pt&ref=John.3.16',
     { view: 'threads', ref: 'John.3.16', locale: 'pt', translation: 'blivre' },
@@ -164,6 +175,26 @@ const SAVED: readonly (readonly [string, Partial<UrlState>])[] = [
     { ref: 'John.3.16', locale: 'pt', translation: 'blivre' },
   ],
   ['/bible-cross-references/pt/?t=kjv', { locale: 'pt', translation: 'kjv' }],
+  ['/bible-cross-references/de/', { locale: 'de', translation: 'luther1912' }],
+  ['/bible-cross-references/it/', { locale: 'it', translation: 'riveduta1927' }],
+  ['/bible-cross-references/es/', { locale: 'es', translation: 'vbl' }],
+  [
+    '/bible-cross-references/de/threads/',
+    { view: 'threads', locale: 'de', translation: 'luther1912' },
+  ],
+  [
+    '/bible-cross-references/es/?ref=John.3.16',
+    { ref: 'John.3.16', locale: 'es', translation: 'vbl' },
+  ],
+  ['/bible-cross-references/uk/', { locale: 'uk' }],
+  ['/bible-cross-references/uk', { locale: 'uk' }],
+  ['/bible-cross-references/uk/index.html', { locale: 'uk' }],
+  ['/bible-cross-references/uk/threads/', { view: 'threads', locale: 'uk' }],
+  ['/bible-cross-references/uk/threads/index.html', { view: 'threads', locale: 'uk' }],
+  // The path wins over a query that disagrees with it, exactly as it does for Portuguese.
+  ['/bible-cross-references/uk/?lang=en', { locale: 'uk' }],
+  ['/bible-cross-references/uk/?ref=John.3.16', { ref: 'John.3.16', locale: 'uk' }],
+  ['/bible-cross-references/uk/?t=luther1912', { locale: 'uk', translation: 'luther1912' }],
   [
     '/bible-cross-references/pt/threads/?ref=John.3.16&votes=10&hide=law,acts&t=kjv',
     {

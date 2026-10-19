@@ -11,6 +11,7 @@ import { enBooks } from './books/en.ts';
 import { ptBooks } from './books/pt.ts';
 import { isLocaleId, LOCALE_IDS, matchLocale } from './locale-id.ts';
 import { en } from './messages/en.ts';
+import { formOf } from './messages/uk.ts';
 import type { Emphasized } from './messages/types.ts';
 import { DEFAULT_LOCALE_ID, getLocale, LOCALE_LIST } from './registry.ts';
 import { TRANSLATION_MANIFESTS } from '../translations/registry.ts';
@@ -66,7 +67,7 @@ describe('the message catalogues', () => {
 
   it('sets a summary line’s numbers apart from the words around them', () => {
     for (const locale of LOCALE_LIST) {
-      const parts = message(locale, 'stats.verses')('31,102');
+      const parts = message(locale, 'stats.verses')('31,102', 31_102);
       expect(parts[0]).toEqual({ strong: '31,102' });
       expect(typeof parts[1]).toBe('string');
     }
@@ -184,8 +185,9 @@ describe('every message, in every language', () => {
 
   it('renders the messages whose arguments may be absent', () => {
     for (const locale of LOCALE_LIST) {
-      expect(message(locale, 'stats.links')('1', null).length).toBeGreaterThan(0);
-      expect(message(locale, 'stats.links')('1', '2').length).toBeGreaterThan(0);
+      expect(message(locale, 'stats.links')('1', null, 1).length).toBeGreaterThan(0);
+      expect(message(locale, 'stats.links')('1', '2', 1).length).toBeGreaterThan(0);
+      expect(message(locale, 'stats.links')('5', '9', 5).length).toBeGreaterThan(0);
     }
   });
 
@@ -195,6 +197,55 @@ describe('every message, in every language', () => {
         message(locale, 'panel.previousChapter'),
       );
       expect(message(locale, 'panel.nextVerse')).not.toBe(message(locale, 'panel.nextChapter'));
+    }
+  });
+});
+
+/**
+ * The one piece of linguistic logic in the codebase, and the only one a reader of the language
+ * cannot check by reading a string: Ukrainian picks between three forms by the last digit, with
+ * the teens as an exception. `completeness.ts` proves the words inflect somewhere across one,
+ * two and five; it cannot prove which form appears when, and permuting the three forms left the
+ * whole suite green until this existed.
+ */
+describe('counting in Ukrainian', () => {
+  const form = (count: number) => formOf(count, 'вірш', 'вірші', 'віршів');
+
+  it.each([
+    [0, 'віршів'],
+    [1, 'вірш'],
+    [2, 'вірші'],
+    [3, 'вірші'],
+    [4, 'вірші'],
+    [5, 'віршів'],
+    [9, 'віршів'],
+    // The teens are the exception: 11 to 14 take the many form although they end in 1 to 4.
+    [11, 'віршів'],
+    [12, 'віршів'],
+    [13, 'віршів'],
+    [14, 'віршів'],
+    [15, 'віршів'],
+    // And above them the last digit decides again.
+    [21, 'вірш'],
+    [22, 'вірші'],
+    [25, 'віршів'],
+    [101, 'вірш'],
+    [111, 'віршів'],
+    [112, 'віршів'],
+    [1001, 'вірш'],
+    [31_102, 'вірші'],
+  ])('%i takes %s', (count, expected) => {
+    expect(form(count)).toBe(expected);
+  });
+
+  it('agrees with the platform, which is the rule it is copying', () => {
+    // `Intl.PluralRules` carries the CLDR rule for Ukrainian. The helper exists so a catalogue
+    // can be read and tested without it, not because it is free to disagree with it — so the
+    // two are checked against each other across every count the app can show.
+    const rules = new Intl.PluralRules('uk');
+    const byCldr: Readonly<Record<string, string>> = { one: 'вірш', few: 'вірші', many: 'віршів' };
+    for (let count = 0; count <= 1000; count += 1) {
+      expect(form(count), String(count)).toBe(byCldr[rules.select(count)] ?? 'віршів');
     }
   });
 });

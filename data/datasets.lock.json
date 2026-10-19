@@ -12,6 +12,7 @@
     "bytes": 3967518,
     "shape": {
       "characters": 3775995,
+      "digits": 0,
       "empty": 0,
       "supplied": 4838,
       "verses": 31102
@@ -22,6 +23,7 @@
     "bytes": 3946378,
     "shape": {
       "characters": 3812012,
+      "digits": 499,
       "empty": 16,
       "supplied": 0,
       "verses": 31102
@@ -32,8 +34,42 @@
     "bytes": 4253974,
     "shape": {
       "characters": 4155835,
+      "digits": 0,
       "empty": 0,
       "supplied": 14241,
+      "verses": 31102
+    }
+  },
+  "data/translations/luther1912.json": {
+    "sha256": "c868829a22d0a18b28b2f088bc505738eb93afb6f7b5b595069a351dfe3b091a",
+    "bytes": 4155530,
+    "shape": {
+      "characters": 4002044,
+      "digits": 1,
+      "empty": 0,
+      "supplied": 0,
+      "verses": 31102
+    }
+  },
+  "data/translations/riveduta1927.json": {
+    "sha256": "7566e1c0f8bb56e898e214ae2e4874c68ede83bb68e33732cff95d69ff36c4e3",
+    "bytes": 4247719,
+    "shape": {
+      "characters": 4025518,
+      "digits": 2,
+      "empty": 0,
+      "supplied": 0,
+      "verses": 31102
+    }
+  },
+  "data/translations/vbl.json": {
+    "sha256": "c8317a7eb2bc1343d091e71e91a798a54de932a1f29da642ae6c6da4f2b7d41c",
+    "bytes": 4259104,
+    "shape": {
+      "characters": 4029049,
+      "digits": 507,
+      "empty": 16,
+      "supplied": 0,
       "verses": 31102
     }
   },

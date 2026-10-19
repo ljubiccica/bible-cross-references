@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ACTIVE, PANEL, openPanel, settle, waitForApp } from './helpers.ts';
+import { DEFAULT_LOCALE_ID, LOCALE_IDS } from '../../src/i18n/locale-id.ts';
 
 /**
  * A picture of every major screen, at a desktop size and on a phone.
@@ -22,10 +23,15 @@ const FULL = { fullPage: false } as const;
  * renderer that is not pixel-identical run to run.
  *
  * But only the shots containing that canvas need the slack. A desktop panel shot is framed on
- * the `aside`: DOM text, no WebGL, byte-identical across runs. Those get a budget that would
- * actually have caught the bold.
+ * the `aside`: DOM text, no WebGL. Those get a budget that would actually have caught the bold.
+ *
+ * Only `maxDiffPixels`, with no ratio beside it. Playwright applies the stricter of the two when
+ * both are given, so pairing this with `maxDiffPixelRatio: 0` quietly reduced the budget to
+ * zero: the panel shots then failed on twelve pixels of text antialiasing, which is noise, and
+ * the 150 the comment above promises was never in force. Reading `0` as "no ratio limit" is the
+ * easy mistake, and it is the reason this suite had a shot that failed about two runs in three.
  */
-const EXACT = { maxDiffPixels: 150, maxDiffPixelRatio: 0 } as const;
+const EXACT = { maxDiffPixels: 150 } as const;
 
 /**
  * Photographs the details.
@@ -411,52 +417,80 @@ test.describe('the data page', () => {
   });
 });
 
-test.describe('in Portuguese', () => {
-  test('the arcs, with the interface in Portuguese', async ({ page }) => {
-    await show(page, './?lang=pt');
-    await expect(page).toHaveScreenshot('pt-arcs.png', FULL);
-  });
-
-  test('a verse and its cross-references', async ({ page }) => {
-    await show(page, './?lang=pt&ref=John.3.16');
-    await openPanel(page);
-    await settle(page);
-    await shotPanel(page, 'pt-panel.png');
-  });
-
-  test('the reading threads, whose spine is lettered too', async ({ page }) => {
-    await show(page, './threads/?lang=pt&ref=John.3.16');
-    await openPanel(page);
-    await settle(page);
-    await expect(page).toHaveScreenshot('pt-threads.png', FULL);
-  });
-
-  test('the sections folded away, where a longer language has to fit the same row', async ({
-    page,
-  }) => {
-    // The bands are the tightest row in the app: an icon, a name, a description, a count and a
-    // chevron, all on one line. Portuguese is where they stop fitting, and for a while they
-    // pushed the panel sideways instead of truncating.
-    await show(page, './?lang=pt&ref=2Cor.11');
-    await openPanel(page);
-    const headers = page.locator(PANEL).getByRole('button', { expanded: true });
-    for (let guard = 0; guard < 8; guard += 1) {
-      if ((await headers.count()) === 0) {
-        break;
-      }
-      await headers.first().click();
+/**
+ * Folds every section of the details away, leaving the bands.
+ *
+ * The bands are the tightest row in the app: an icon, a name, a description, a count and a
+ * chevron, all on one line. They are where a longer language stops fitting, and for a while they
+ * pushed the panel sideways instead of truncating.
+ */
+async function foldEverySection(page: Page): Promise<void> {
+  const headers = page.locator(PANEL).getByRole('button', { expanded: true });
+  for (let guard = 0; guard < 8; guard += 1) {
+    if ((await headers.count()) === 0) {
+      return;
     }
-    await settle(page);
-    await shotPanel(page, 'pt-panel-collapsed.png');
-  });
+    await headers.first().click();
+  }
+}
 
-  test('the picker, grouped by language', async ({ page }) => {
-    await show(page, './?lang=pt');
-    await page
-      .locator(ACTIVE)
-      .getByRole('button', { name: /Tradução/ })
-      .click();
-    await settle(page);
-    await expect(page).toHaveScreenshot('pt-menu-translation.png', FULL);
+/**
+ * The app in each language it speaks other than English.
+ *
+ * English is photographed screen by screen above. A translation is not, and does not need to be:
+ * what changes with the language is the chrome and the text, never the canvas behind them. These
+ * are the places where a language that runs longer or shorter than English actually shows — the
+ * app as it opens, a verse's details, those details with every section folded, the other view,
+ * and the picker, whose order depends on which language is reading it.
+ *
+ * Written as a loop over `LOCALE_IDS` rather than one block per language, because a block per
+ * language means the next language is only photographed when somebody remembers to copy one —
+ * which is how Portuguese came to be the only translation anybody could look at.
+ */
+for (const locale of LOCALE_IDS.filter((id) => id !== DEFAULT_LOCALE_ID)) {
+  test.describe(`in ${locale}`, () => {
+    test('the arcs, with the whole interface translated', async ({ page }) => {
+      await show(page, `./?lang=${locale}`);
+      await expect(page).toHaveScreenshot(`${locale}-arcs.png`, FULL);
+    });
+
+    test('a verse and its cross-references', async ({ page }) => {
+      await show(page, `./?lang=${locale}&ref=John.3.16`);
+      await openPanel(page);
+      await settle(page);
+      await shotPanel(page, `${locale}-panel.png`);
+    });
+
+    test('the reading threads, whose spine is lettered too', async ({ page }) => {
+      await show(page, `./threads/?lang=${locale}&ref=John.3.16`);
+      await openPanel(page);
+      await settle(page);
+      await expect(page).toHaveScreenshot(`${locale}-threads.png`, FULL);
+    });
+
+    test('the sections folded away, where a longer language has to fit the same row', async ({
+      page,
+    }) => {
+      await show(page, `./?lang=${locale}&ref=2Cor.11`);
+      await openPanel(page);
+      await foldEverySection(page);
+      await settle(page);
+      await shotPanel(page, `${locale}-panel-collapsed.png`);
+    });
+
+    test('the picker, with this language’s own Bibles at the top', async ({ page }) => {
+      await show(page, `./?lang=${locale}`);
+      // Found by its shape rather than its name: the translation menu is the one that shows a
+      // value (the abbreviation) next to a chevron, which is true whatever the label says. A
+      // regex of every language's word for "Translation" would need editing for each new one.
+      await page.locator(`${ACTIVE} button:has([class*="menuValue"])`).click();
+      await settle(page);
+      // Framed on the popover: the canvas behind it is the same in every language, and a shot
+      // without it is both smaller on disk and held to a budget that would catch a wrong weight.
+      await expect(page.locator(`${ACTIVE} [class*="popover"]`)).toHaveScreenshot(
+        `${locale}-translations.png`,
+        EXACT,
+      );
+    });
   });
-});
+}

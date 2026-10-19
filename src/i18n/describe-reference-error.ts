@@ -23,12 +23,17 @@ export function describeReferenceError(
       return t('reference.ambiguous')(error.query, list);
     }
     case 'no-such-chapter':
-      return t('reference.chapters')(bookName(error.book, books), n(error.chapters));
+      return t('reference.chapters')(
+        bookName(error.book, books),
+        n(error.chapters),
+        error.chapters,
+      );
     case 'no-such-verse':
       return t('reference.verses')(
         bookReferenceName(error.book, books),
         n(error.chapter),
         n(error.verses),
+        error.verses,
       );
   }
 }

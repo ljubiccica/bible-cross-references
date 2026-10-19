@@ -46,10 +46,27 @@ export type ReferenceParseResult =
  *   arrive as `o` plus a combining tilde, which is not a letter and would end the book here;
  * - apostrophes and hyphens, which several languages put inside a book's own name
  *   (`Mısır'dan Çıkış`, `Об'явлення`, `1-а Самуїлова`);
- * - the ordinal markers a numeral takes in Portuguese (`1º Coríntios`).
+ * - the ordinal markers a numeral takes in Portuguese (`1º Coríntios`);
+ * - the comma German and much of continental Europe put between chapter and verse (`Joh 3,16`).
+ *   A comma cannot be part of a book name, so it can only ever mean the separator, and without
+ *   it a German reader typing the citation their own Bible prints is told there is no such book.
  */
 const REFERENCE_PATTERN =
-  /^(?<book>(?:[1-3][º°ª]?[\s.-]*)?[\p{L}\p{M}][\p{L}\p{M}\s.'’‘ʼ-]*?)\s*(?<chapter>\d+)(?:\s*[:.\s]\s*(?<verse>\d+))?$/iu;
+  /^(?<book>(?:[1-3][º°ª]?[\s.-]*)?[\p{L}\p{M}][\p{L}\p{M}\s.'’‘ʼ-]*?)\s*(?<chapter>\d+)(?:\s*[:.,\s]\s*(?<verse>\d+))?$/iu;
+
+/**
+ * The book a reference names, as typed: `1º Coríntios 13` → `1º Coríntios`, `Joh 3,16` → `Joh`.
+ * Empty when the string is not shaped like a reference at all.
+ *
+ * Read off `REFERENCE_PATTERN` rather than by stripping trailing digits, so that whatever the
+ * parser accepts between a book and its numbers, this agrees. A second copy of that separator
+ * list in `src/i18n/completeness.ts` fell out of step the day the comma was added here, and
+ * every German acceptance case quietly stopped counting towards the spellings it is meant to
+ * pin — passing, while the gate went on asking for rows that were already written.
+ */
+export function bookPartOf(typed: string): string {
+  return REFERENCE_PATTERN.exec(typed.trim())?.groups?.['book']?.trim() ?? '';
+}
 
 function failure(error: ReferenceParseError): ReferenceParseResult {
   return { ok: false, error };

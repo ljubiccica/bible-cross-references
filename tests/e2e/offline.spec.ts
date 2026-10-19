@@ -31,8 +31,8 @@ async function cacheState(page: Page) {
   });
 }
 
-async function installWorker(page: Page): Promise<void> {
-  await page.goto('./?ref=John.3.16');
+async function installWorker(page: Page, path = './?ref=John.3.16'): Promise<void> {
+  await page.goto(path);
   await waitForApp(page);
   await expect
     .poll(async () => (await cacheState(page)).registered, { timeout: 30_000 })
@@ -86,6 +86,31 @@ test.describe('the offline cache', () => {
     await waitForApp(page);
     await expect(page.locator(PANEL).getByRole('heading', { name: 'John 3:16' })).toBeVisible();
     await expect(page.locator(PANEL)).toContainText(/For God so loved the world/);
+    await restoreTheNetwork(context);
+  });
+
+  /**
+   * A reader who installed the app in German, not in English.
+   *
+   * There is one worker for all six languages, so it cannot know at install which Bible the
+   * reader in front of it uses: it precaches the cross-references, which everyone needs, and
+   * the page posts `cache-datasets` with the translation it actually loaded. That is what keeps
+   * a German reader from downloading the English Bible they will never open — and it is also
+   * the thing that would strand them offline if it ever stopped working, which nothing noticed
+   * before, because every test here installed from the English page.
+   */
+  test('a reader who installed in German has their own Bible offline', async ({
+    page,
+    context,
+  }) => {
+    await installWorker(page, './de/?ref=John.3.16');
+    await cutTheNetwork(context);
+    await page.reload();
+    await waitForApp(page);
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    await expect(page.locator(PANEL).getByRole('heading', { name: 'Johannes 3:16' })).toBeVisible();
+    await expect(page.locator(PANEL)).toContainText(/Also hat Gott die Welt geliebt/);
     await restoreTheNetwork(context);
   });
 

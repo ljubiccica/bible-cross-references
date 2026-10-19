@@ -1,7 +1,7 @@
 import { bookNameCollisions, foldBookName, normalizeBookName } from '../core/bible/book-lookup.ts';
 import { BOOKS } from '../core/bible/books.ts';
 import { GENRES, type GenreId } from '../core/bible/genres.ts';
-import { parseReference } from '../core/bible/reference-parse.ts';
+import { bookPartOf, parseReference } from '../core/bible/reference-parse.ts';
 import { KJV_VERSIFICATION } from '../core/bible/versification.ts';
 import { INSTALL_PLATFORMS } from '../shared/lib/install-platform.ts';
 import type { AcceptanceCase } from './books/acceptance.ts';
@@ -76,10 +76,17 @@ export const SHORT_NAME_MAX = 16;
 export const SAME_AS_ENGLISH_MAX = 25;
 /**
  * How much two languages may have in common before one of them is a copy of the other. Related
- * languages share real words, so this is deliberately high: it is here to catch a catalogue
- * filed under the wrong id, not to police how close Spanish and Portuguese are.
+ * languages share real words, so this is deliberately loose: it is here to catch a catalogue
+ * filed under the wrong id or half-translated, not to police how close Spanish and Portuguese
+ * are.
+ *
+ * Measured across the six catalogues the app ships: the closest pair is Portuguese and Spanish
+ * at 18%, and every other pair is between one and three. At 80% a catalogue could be four
+ * fifths of another verbatim and pass, which is the realistic accident — somebody seeds a new
+ * language from the nearest one and translates the half they get to. Half is still nearly three
+ * times the highest real figure.
  */
-export const CLONED_CATALOGUE_SHARE = 0.8;
+export const CLONED_CATALOGUE_SHARE = 0.5;
 
 /**
  * The words of a value, with everything that is not a word taken out.
@@ -126,9 +133,31 @@ function flatten(value: unknown): string {
   return '';
 }
 
-/** Distinctive stand-ins for a message's arguments, so a dropped one is visible in the result. */
+/**
+ * Distinctive stand-ins for a message's arguments, so a dropped one is visible in the result.
+ *
+ * Lettered, not numbered. The plural check below substitutes a real count at one position and
+ * compares the results, so a digit anywhere else in the output is a difference it can mistake
+ * for inflection — and `«arg1»` put one there. See `withoutDigits`.
+ */
 function probes(count: number): string[] {
-  return Array.from({ length: count }, (_value, index) => `«arg${String(index + 1)}»`);
+  const letters = 'ABCDEFGH';
+  return Array.from(
+    { length: count },
+    (_value, index) => `«arg${letters[index] ?? String(index)}»`,
+  );
+}
+
+/**
+ * The words of a message, with every run of digits reduced to one mark.
+ *
+ * What the plural check is asking is whether the *words* around a count change with it. The
+ * count itself always changes, so comparing the rendered strings made `(count) => \`${count}
+ * жанрів\`` look as though it inflected: the only difference between its one, two and five was
+ * the numeral that had been substituted. Masking the digits asks the question that was meant.
+ */
+function withoutDigits(text: string): string {
+  return text.replaceAll(/\d+/gu, '#');
 }
 
 function checkMessages(bundle: LocaleBundle): Problem[] {
@@ -192,8 +221,8 @@ function checkMessages(bundle: LocaleBundle): Problem[] {
         let englishOne: string;
         let englishMany: string;
         try {
-          englishOne = call(english, 1);
-          englishMany = call(english, 2);
+          englishOne = withoutDigits(call(english, 1));
+          englishMany = withoutDigits(call(english, 2));
         } catch {
           continue;
         }
@@ -201,12 +230,22 @@ function checkMessages(bundle: LocaleBundle): Problem[] {
           continue;
         }
         try {
-          if (call(value, 1) === call(value, 2)) {
+          // Three counts, not two, because English is the wrong shape to measure other
+          // languages against. English changes between one and two and then stops; Ukrainian
+          // changes again at five, and some of its nouns do not change at one and two at all —
+          // «1 посилання» and «2 посилання» are both right, and only «5 посилань» differs.
+          // Asking for a difference between one and two would have forced that catalogue into
+          // bad Ukrainian to satisfy a rule about English. Asking that the count inflect
+          // *somewhere* across one, two and five keeps what this is for — a message that reads
+          // `+ 1 versículos` whatever the number — and is stricter for a language with three
+          // forms, since two of them are now exercised rather than one.
+          const forms = new Set([1, 2, 5].map((count) => withoutDigits(call(value, count))));
+          if (forms.size === 1) {
             problems.push({
               where,
               key,
               detail:
-                'says the same for one as for many, where the English message does not: a count needs its singular and its plural',
+                'says the same for one, two and five, where the English message varies: a count has to inflect the words around it',
             });
           }
         } catch {
@@ -265,8 +304,46 @@ function checkBooks(bundle: LocaleBundle): Problem[] {
     if (book.aliases.some((alias) => blank(alias))) {
       problems.push({ where, key: id, detail: 'blank alias' });
     }
+    // `referenceName` is what a citation is printed with — Psalms is listed as "Psalms" and
+    // cited as "Psalm 23:1" — so a blank one takes the book's name out of every reference in
+    // the app while the catalogue still looks complete.
+    if (book.referenceName !== undefined && blank(book.referenceName)) {
+      problems.push({ where, key: id, detail: 'blank name for citations' });
+    }
     if (sameWords(book.name, bundle.english.books[id].name)) {
       problems.push(...identical(bundle, where, id, '.name'));
+    }
+    if (
+      book.referenceName !== undefined &&
+      sameWords(book.referenceName, bundle.english.books[id].referenceName ?? '')
+    ) {
+      problems.push(...identical(bundle, where, id, '.referenceName'));
+    }
+  }
+
+  /**
+   * The short forms, as a catalogue rather than one at a time.
+   *
+   * Per book would be wrong: a language may legitimately land on English's own abbreviation
+   * here and there. But the check above only ever compares `name`, so replacing all sixty-six
+   * short forms with their English OSIS ids passed the gate — which is the exact thing that
+   * check says it exists to prevent, since the arcs axis is labelled from these. Measured
+   * across the catalogue instead: today every language shares none of English's sixty-six, so
+   * this threshold has the whole range to spare and only fires on a catalogue that was never
+   * translated.
+   */
+  if (!bundle.isDefault) {
+    const shared = BOOKS.filter(
+      ({ id }) => bundle.books[id].abbreviation === bundle.english.books[id].abbreviation,
+    ).length;
+    if (shared / BOOKS.length >= CLONED_CATALOGUE_SHARE) {
+      problems.push({
+        where,
+        key: 'abbreviation',
+        detail:
+          `${String(shared)} of ${String(BOOKS.length)} short forms are English's own: ` +
+          'the arcs axis would be labelled in English',
+      });
     }
   }
   const names = BOOKS.map(({ id }) => bundle.books[id].name);
@@ -455,11 +532,6 @@ function checkSite(bundle: LocaleBundle): Problem[] {
     problems.push(...identical(bundle, where, 'socialImage', '.alt'));
   }
   return problems;
-}
-
-/** The book part of a typed reference: `1º Coríntios 13` → `1º Coríntios`. */
-function bookPartOf(typed: string): string {
-  return typed.replace(/[\s.:]*\d+(?:[\s.:]+\d+)?\s*$/u, '').trim();
 }
 
 function checkAcceptance(bundle: LocaleBundle): Problem[] {

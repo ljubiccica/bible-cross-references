@@ -26,8 +26,11 @@
   }
 }
 
+/* The same languages as the masthead rule in VizPage.module.css, for the same reason: these
+   are the ones measured to need it, not the ones with the longest names. */
 @media (max-width: 85.99rem) {
-  :global(html[lang|='pt']) .search {
+  :global(html[lang|='pt']) .search,
+  :global(html[lang|='uk']) .search {
     flex-basis: 10rem;
   }
 }
@@ -173,7 +176,18 @@
 }
 
 /* Sized to its content up to a comfortable measure; MenuButton slides it back into the viewport
-   (keeping the same 0.75rem margin) when it would overflow a narrow screen. */
+   (keeping the same 0.75rem margin) when it would overflow a narrow screen.
+
+   The height is capped and allowed to scroll, which the width has never needed. The page is
+   `100dvh` with `overflow: hidden` inside a fixed-position view, so nothing outside this element
+   can scroll: anything taller than the screen is simply unreachable — no scrollbar, no gesture,
+   no sign that it is there. The translation menu is the one that grows, by a row and a heading
+   for every language the app offers a Bible in, and the first thing off the bottom is the
+   licence credit, which on a phone this menu is the only place to read (the footer drops it for
+   want of room). `7rem` clears the header the menu hangs from, plus its own margin — and the
+   safe-area insets come off as well, because the header is padded by the top one
+   (`VizPage.module.css`), so inside an installed app the menu starts that much further down and
+   a cap that ignored it would hang off the bottom of the screen by exactly the notch. */
 .popover {
   position: absolute;
   inset-block-start: calc(100% + var(--space-2));
@@ -183,6 +197,11 @@
   gap: var(--space-3);
   inline-size: max-content;
   max-inline-size: min(20rem, calc(100vw - 1.5rem));
+  max-block-size: calc(
+    100dvh - 7rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);

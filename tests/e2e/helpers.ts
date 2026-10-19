@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 /** The panel of the view currently on screen (both views stay mounted). */
 export const PANEL = 'div[data-active="true"] aside';
@@ -24,13 +24,23 @@ export function collectErrors(page: Page): string[] {
 
 /**
  * On a phone the details are a sheet that starts part-way up the screen, so its lower contents
- * are off screen until it is opened. On a desktop there is no handle and nothing to do.
+ * are off screen until it is opened. On a desktop the handle is hidden and there is nothing to do.
+ *
+ * The handle is found by its state, not its name. `getByRole('button', { name: 'Expand details' })`
+ * matched nothing in every language but English — the label is `t('panel.expand')` — and because
+ * the only thing done with it was `isVisible()`, the helper quietly did nothing and every
+ * non-English phone test ran against a sheet that had never been opened, and passed. The final
+ * assertion is there so that a locator which stops matching fails instead of going quiet.
  */
 export async function openPanel(page: Page): Promise<void> {
-  const handle = page.locator(PANEL).getByRole('button', { name: 'Expand details' });
-  if (await handle.isVisible()) {
+  const handle = page.locator(`${PANEL} > button[aria-expanded]`);
+  if (!(await handle.isVisible())) {
+    return;
+  }
+  if ((await handle.getAttribute('aria-expanded')) === 'false') {
     await handle.click();
   }
+  await expect(handle).toHaveAttribute('aria-expanded', 'true');
 }
 
 /** Opens a passage straight from its address, with its details in full view. */

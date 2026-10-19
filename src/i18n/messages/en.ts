@@ -29,9 +29,15 @@ export const en = {
   'reference.ambiguous': (query: string, candidates: string) =>
     `“${query}” could be ${candidates}.`,
   'reference.or': ' or ',
-  'reference.chapters': (book: string, count: string) => `${book} has ${count} chapters.`,
-  'reference.verses': (reference: string, chapter: string, count: string) =>
-    `${reference} ${chapter} has ${count} verses.`,
+  // The count comes through as a number as well as a formatted string. English needs it for the
+  // five books of one chapter it would otherwise mis-say — Obadiah, Philemon, 2 John, 3 John and
+  // Jude — and a language that counts in more than two forms needs it for most of the Bible.
+  'reference.chapters': (book: string, count: string, plural: number) =>
+    plural === 1 ? `${book} has ${count} chapter.` : `${book} has ${count} chapters.`,
+  'reference.verses': (reference: string, chapter: string, count: string, plural: number) =>
+    plural === 1
+      ? `${reference} ${chapter} has ${count} verse.`
+      : `${reference} ${chapter} has ${count} verses.`,
 
   'menu.filtersChanged': 'Filters (changed)',
   'menu.filters': 'Filters',
@@ -63,6 +69,20 @@ export const en = {
     'Scripture text: Bíblia Livre (BLIVRE), © Diego Santos, Mario Sérgio and Marco Teles, ' +
     'February 2018 (Textus Receptus edition), https://sites.google.com/site/biblialivre/. ' +
     'Changed: whitespace was normalized; no word was altered.',
+  'attribution.luther1912':
+    'Scripture text: Lutherbibel 1912 (LUT), the 1912 revision of Martin Luther’s German ' +
+    'translation. Public domain. Changed: the edition’s own verse numbers were taken out of ' +
+    '358 verses and a corrupt token out of Judges 11:25; no word was altered.',
+  'attribution.riveduta1927':
+    'Scripture text: Riveduta 1927 (RIV), the Italian revision made under Giovanni Luzzi. ' +
+    'Public domain. Changed: the edition’s own verse numbers were taken out of 228 verses, ' +
+    'a running head out of three and a stray character out of 2 Samuel 20:26; no word was ' +
+    'altered.',
+  'attribution.vbl':
+    'Scripture text: Versión Biblia Libre (VBL), © 2018–2020 Jonathan Gallagher y Shelly ' +
+    'Barrios de Avila, with Gustavo Sanabria and Rebekah Põldaas, ' +
+    'https://ebible.org/Scriptures/details.php?id=spavbl, licensed under CC BY-SA 4.0. ' +
+    'Changed: a space before a colon was moved in one verse; no word was altered.',
   'license.publicDomain': 'Public domain',
   'menu.translation': 'Translation',
   'menu.translation.failed': (name: string) => `${name} could not be loaded.`,
@@ -79,15 +99,20 @@ export const en = {
   'testament.NT': 'New Testament',
 
   'stats.label': 'Summary',
-  'stats.verses': (count: string): Emphasized => [{ strong: count }, ' verses'],
-  'stats.links': (shown: string, total: string | null): Emphasized =>
-    total === null
-      ? [{ strong: shown }, ' links shown']
-      : [{ strong: shown }, ` of ${total} links shown`],
-  'stats.connected': (share: string): Emphasized => [{ strong: share }, ' of verses connected'],
-  'stats.crossTestament': (count: string): Emphasized => [
+  'stats.verses': (count: string, plural: number): Emphasized => [
     { strong: count },
-    ' links between the testaments',
+    plural === 1 ? ' verse' : ' verses',
+  ],
+  'stats.links': (shown: string, total: string | null, plural: number): Emphasized => {
+    const links = plural === 1 ? 'link' : 'links';
+    return total === null
+      ? [{ strong: shown }, ` ${links} shown`]
+      : [{ strong: shown }, ` of ${total} ${links} shown`];
+  },
+  'stats.connected': (share: string): Emphasized => [{ strong: share }, ' of verses connected'],
+  'stats.crossTestament': (count: string, plural: number): Emphasized => [
+    { strong: count },
+    plural === 1 ? ' link between the testaments' : ' links between the testaments',
   ],
   'hint.zoom': 'to zoom',
   'hint.pan': 'to pan',
@@ -125,14 +150,14 @@ export const en = {
   'panel.verses': 'Verses',
   'panel.verses.note': 'tap one to focus it',
   'panel.none': 'None',
-  'panel.items': 'items',
-  'panel.passages': 'passages',
-  'panel.linksCounted': 'links',
-  'panel.versesCounted': 'verses',
+  'panel.items': (plural: number): string => (plural === 1 ? 'item' : 'items'),
+  'panel.passages': (plural: number): string => (plural === 1 ? 'passage' : 'passages'),
+  'panel.linksCounted': (plural: number): string => (plural === 1 ? 'link' : 'links'),
+  'panel.versesCounted': (plural: number): string => (plural === 1 ? 'verse' : 'verses'),
 
   'words.heading': (language: string) => `Same ${language} word`,
   'words.note': 'where else it is used',
-  'words.counted': 'words',
+  'words.counted': (plural: number): string => (plural === 1 ? 'word' : 'words'),
   'words.showMore': (count: string) => `Show ${count} more`,
   'language.hebrew': 'Hebrew',
   'language.greek': 'Greek',

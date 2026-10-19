@@ -32,6 +32,39 @@
       "homepage": "https://sites.google.com/site/biblialivre/"
     },
     {
+      "id": "luther1912",
+      "description": "Lutherbibel 1912, eBible.org edition, verse-per-line text in a ZIP archive",
+      "url": "https://ebible.org/Scriptures/deu1912_vpl.zip",
+      "fileName": "deu1912_vpl.zip",
+      "sha256": "f6723776717b2e18e53dc81b0b7758aeb6ce969aee9cfb432d9b61006fa13dff",
+      "member": "deu1912_vpl.txt",
+      "retrievedAt": "2026-10-19",
+      "license": "Public domain",
+      "homepage": "https://ebible.org/Scriptures/details.php?id=deu1912"
+    },
+    {
+      "id": "riveduta1927",
+      "description": "Riveduta 1927, eBible.org edition, verse-per-line text in a ZIP archive",
+      "url": "https://ebible.org/Scriptures/ita1927_vpl.zip",
+      "fileName": "ita1927_vpl.zip",
+      "sha256": "50a63dca8b8164c13812fec073ff2dd50ebdd07e589d7ebf6e2db89a2f82fc80",
+      "member": "ita1927_vpl.txt",
+      "retrievedAt": "2026-10-19",
+      "license": "Public domain",
+      "homepage": "https://ebible.org/Scriptures/details.php?id=ita1927"
+    },
+    {
+      "id": "vbl",
+      "description": "Versión Biblia Libre, eBible.org edition, verse-per-line text in a ZIP archive",
+      "url": "https://ebible.org/Scriptures/spavbl_vpl.zip",
+      "fileName": "spavbl_vpl.zip",
+      "sha256": "89192359b0638008d2f4a737fec2b4c14864fa2dc60b4fc3e3368b633a82f580",
+      "member": "spavbl_vpl.txt",
+      "retrievedAt": "2026-10-19",
+      "license": "CC BY-SA 4.0",
+      "homepage": "https://ebible.org/Scriptures/details.php?id=spavbl"
+    },
+    {
       "id": "openbible",
       "description": "OpenBible.info cross-references (TSV in a ZIP archive)",
       "url": "https://a.openbible.info/data/cross-references.zip",

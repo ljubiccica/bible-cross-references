@@ -116,9 +116,25 @@ and the reading direction are taken on trust. Read those by hand.
 
 A pinned source, a manifest and an importer entry. The one hard requirement is verse numbering:
 the app indexes every verse by its position in the KJV's 31,102, so a translation that numbers
-verses differently needs a mapping before it can be added. The importer refuses a file that does
-not line up rather than silently showing the wrong verse, so this fails loudly at build time, not
-quietly in front of a reader.
+verses differently needs a mapping before it can be added.
+
+Two different things can be wrong with the numbering, and only one of them is obvious. Wrong
+_keys_ — a missing verse, a repeated one, a book outside the canon, the World English Bible's
+renumbered doxology of Romans — are refused outright. The right keys with the wrong _contents_
+are not, and that is the case to watch for: Hebrew Bibles close Genesis 31, Numbers 29, 1 Samuel
+23 and Jonah 1 a verse earlier than the KJV does, so a text that follows them and was never
+remapped has all 31,102 keys and its words one verse out. eBible's Reina Valera 1909 is exactly
+that, and it was nearly added on the strength of its key count.
+
+The symptom is a blank verse, and `scripts/data/lib/omitted-verses.ts` refuses any verse left
+without text that is not one of the sixteen the earliest manuscripts omit. That catches the
+common case at build time, but it is a tripwire rather than a proof: before adding a translation,
+read the verses either side of those boundaries against a text you already trust, and check the
+last verse of an affected chapter as well as the first. The German `deu1912` is a useful place to
+start — eBible leaves that edition's own verse numbers in the text, so its 358 markers name every
+place the _Luther_ numbering and the KJV's part company. It is not a general map: the Italian
+marks 228 places, and only 57 of them are among the German's. Different traditions diverge in
+different verses, and a text that carries no markers at all has not thereby been checked.
 
 ### Layout
 

@@ -12,4 +12,8 @@ export const LOCALE_TAGS: Readonly<
 > = {
   en: { tag: 'en', endonym: 'English' },
   pt: { tag: 'pt-BR', endonym: 'Português' },
+  de: { tag: 'de', endonym: 'Deutsch' },
+  it: { tag: 'it', endonym: 'Italiano' },
+  es: { tag: 'es', endonym: 'Español' },
+  uk: { tag: 'uk', endonym: 'Українська' },
 };

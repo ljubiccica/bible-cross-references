@@ -1,9 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GENRES } from '../../../core/bible/genres.ts';
 import { SiteFooter } from '../../../shared/ui/SiteFooter.tsx';
-import { getTranslationManifest } from '../../../translations/registry.ts';
+import { getTranslationManifest, TRANSLATION_MANIFESTS } from '../../../translations/registry.ts';
 import { createLinkFilter, DEFAULT_LINK_FILTER } from '../link-filter.ts';
 import { Credits } from './Credits.tsx';
 import { FiltersMenu } from './FiltersMenu.tsx';
@@ -11,7 +11,7 @@ import { GenreLegend } from './GenreLegend.tsx';
 import { GenreMenu } from './GenreMenu.tsx';
 import { GenreToggles, toggleGenre } from './GenreToggles.tsx';
 import { LinkStats } from './LinkStats.tsx';
-import { TranslationMenu } from './TranslationMenu.tsx';
+import { groupByLanguage, TranslationMenu } from './TranslationMenu.tsx';
 
 const BSB = getTranslationManifest('bsb');
 
@@ -83,7 +83,69 @@ describe('FiltersMenu', () => {
   });
 });
 
+describe('grouping the translations by language', () => {
+  const order = (preferred: string, accepted?: readonly string[] | null) =>
+    groupByLanguage(preferred, accepted).map(({ language }) => language);
+
+  it('puts the interface language first', () => {
+    expect(order('pt-BR')[0]).toBe('pt');
+    expect(order('en')[0]).toBe('en');
+  });
+
+  it('keeps the registry order among the rest', () => {
+    // Nothing about a reader should decide which of two languages they did not ask for is shown
+    // first; that is the registry's business. Asserted against the registry rather than against
+    // another call, which would pass just as well if both were sorted alphabetically.
+    const registryOrder = [
+      ...new Set(TRANSLATION_MANIFESTS.map(({ language }) => language.toLowerCase().split('-')[0])),
+    ];
+    expect(order('en')).toEqual(registryOrder);
+    expect(order('pt-BR')).toEqual(['pt', ...registryOrder.filter((tag) => tag !== 'pt')]);
+  });
+
+  /**
+   * The app offers Bibles in more languages than it speaks. For a reader whose browser asks for
+   * one of them, that Bible is the one they came for, and it would otherwise be listed behind
+   * every language they did not ask for.
+   */
+  it('lifts a language the browser asks for above the ones it does not', () => {
+    const ranked = order('en', ['de-DE', 'en-US']);
+    expect(ranked[0]).toBe('en');
+    expect(ranked[1]).toBe('de');
+  });
+
+  it('lifts a second language the browser asks for, which is the common case in a bilingual country', () => {
+    // `en-US, es-MX` is an ordinary browser in the United States, and the Spanish Bible is what
+    // that reader is most likely to want after the English one.
+    expect(order('en', ['en-US', 'es-MX']).slice(0, 2)).toEqual(['en', 'es']);
+  });
+
+  it('survives a browser that reports no languages at all', () => {
+    // The DOM types promise an array; some embedded browsers do not keep that promise, and a
+    // menu that throws while rendering is a worse outcome than one in registry order.
+    expect(order('en', undefined)).toEqual(order('en'));
+    expect(order('en', null)).toEqual(order('en'));
+  });
+
+  it('leaves the order alone when the browser and the interface agree', () => {
+    expect(order('en', ['en-US'])).toEqual(order('en'));
+    expect(order('pt-BR', ['en-US', 'pt-BR'])).toEqual(order('pt-BR'));
+  });
+
+  it('groups every translation exactly once', () => {
+    const grouped = groupByLanguage('en', []).flatMap(({ items }) => items);
+    expect(grouped).toHaveLength(TRANSLATION_MANIFESTS.length);
+    expect(new Set(grouped.map(({ id }) => id)).size).toBe(TRANSLATION_MANIFESTS.length);
+  });
+});
+
 describe('TranslationMenu', () => {
+  // A spy restored on the last line of a test is not restored when an assertion above it
+  // throws, and one real failure then becomes a cascade in every test after it.
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('names the translation being read', () => {
     render(
       <TranslationMenu current={BSB} onChange={vi.fn()} localeId="en" onLocaleChange={vi.fn()} />,
@@ -99,6 +161,27 @@ describe('TranslationMenu', () => {
     await openMenu(/Translation/);
     await userEvent.click(screen.getByRole('radio', { name: /King James/ }));
     expect(onChange).toHaveBeenCalledWith('kjv');
+  });
+
+  /**
+   * That the menu actually consults the browser's languages, not just that `groupByLanguage`
+   * could. Passing `locale.tag` alone leaves every other test in this file green, so without
+   * this the whole feature can be disconnected by deleting one argument.
+   */
+  it('ranks the groups by what the browser asks for, not only by the interface language', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US', 'de-DE']);
+    render(
+      <TranslationMenu current={BSB} onChange={vi.fn()} localeId="en" onLocaleChange={vi.fn()} />,
+    );
+    await openMenu(/Translation/);
+    const headings = screen.getByRole('radiogroup', { name: 'Translation' }).querySelectorAll('p');
+    expect([...headings].map((heading) => heading.textContent)).toEqual([
+      'English',
+      'Deutsch',
+      'Português',
+      'Italiano',
+      'Español',
+    ]);
   });
 
   it('marks the one in use', async () => {

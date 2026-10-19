@@ -25,20 +25,23 @@ It is free, open source, and built only on openly licensed data (see [Data](#dat
 
 ### Arcs: the whole Bible at once
 
-![Arcs: every verse of the Bible on one line, with its cross-references drawn as arcs](public/screenshots/arcs.jpg)
+![Arcs: every verse of the Bible on one line, with its cross-references drawn as
+arcs](public/screenshots/arcs.jpg)
 
 - All 31,102 verses sit on one line, from Genesis to Revelation, and every cross-reference is an
   arc colored by the genres it connects.
 - Zoom from the whole Bible down to single verses; hover a passage to see how many connections it
   has.
 - Search for any reference ("John 3:16", "Ps 23") or click a passage to see where its links land.
-- Read it in the Berean Standard Bible or the King James Version; the choice is remembered and
-  travels in the link you share
+- Read it in six translations — English (Berean Standard Bible, King James Version), Portuguese,
+  German, Italian and Spanish — with the interface in any of six languages: English, Portuguese,
+  German, Italian, Spanish or Ukrainian; the choice is remembered and travels in the link you share
   ([`?t=kjv`](https://trekhleb.dev/bible-cross-references/?ref=John.3.16&t=kjv)).
 
 ### Focus a passage
 
-![Arcs with John 3:16 focused: its connections highlighted, and a panel with its text and references](public/screenshots/arcs-verse.jpg)
+![Arcs with John 3:16 focused: its connections highlighted, and a panel with its text and
+references](public/screenshots/arcs-verse.jpg)
 
 The details panel shows the passage's text, where its connections go by genre, and every reference
 with its text. Each one is a link: follow it to travel there. "Read in context" opens the passage in
@@ -54,7 +57,8 @@ the text of the verse in its original language is never shown: only the dictiona
 
 ### Threads: read with the connections in view
 
-![Threads: Psalm 23 with threads from each verse to where its cross-references land](public/screenshots/threads.jpg)
+![Threads: Psalm 23 with threads from each verse to where its cross-references
+land](public/screenshots/threads.jpg)
 
 - Read a chapter while each verse sends threads to where its cross-references land in the whole
   Bible, shown as a bar of all 66 books.
@@ -64,7 +68,8 @@ the text of the verse in its original language is never shown: only the dictiona
 
 ### On your phone
 
-![Both views on a phone: Arcs with Psalm 23:1 focused, and Threads with John 1](public/screenshots/phone.jpg)
+![Both views on a phone: Arcs with Psalm 23:1 focused, and Threads with John
+1](public/screenshots/phone.jpg)
 
 Both views work on phones. On the arcs, touch and hold, then slide, to preview passages (on the book
 bar, just slide), and pinch to zoom. The details open in a sheet that you drag up to read and pull
@@ -96,8 +101,9 @@ that installed the app has already done the work.
 
 ## Languages
 
-The app speaks English and Portuguese. Each has pages of its own: English at the root, every other
-language one path segment down
+The app speaks English, Portuguese, German, Italian, Spanish and Ukrainian. Each has pages of its
+own: English at the root,
+every other language one path segment down
 ([`/pt/`](https://trekhleb.dev/bible-cross-references/pt/?t=blivre)). Which language a visit
 speaks is settled in this order: the page's own path, then the address (`?lang=pt`), then the
 reader's last choice, then what their browser asks for, then English. On a first visit the Bible
@@ -105,6 +111,17 @@ follows the interface — a browser asking for Portuguese arrives at the Bíblia
 asked — and after that the two are independent, so a Portuguese interface can read an English
 text, or the other way round. Both are chosen in one menu, because the header has no room for a
 sixth button.
+
+The app speaks one language it cannot yet read: there are Ukrainian menus and no Ukrainian Bible,
+because no complete one has been found that is both freely licensed and numbered the way this app
+addresses verses. The two do not wait on each other, which is deliberate: a text can be adopted in
+an afternoon once its licence and its verse numbering check out, while an interface is a few
+hundred strings that want a native reader, and holding the Bibles back until the menus caught up
+would
+serve nobody. A reader whose browser asks for one of those languages gets English menus and the
+Berean Standard Bible, with their own Bible one tap away — the picker puts the language their
+browser asked for directly under the interface's own, so it is the first group they did not have
+to look for.
 
 The path comes first because it is not a preference but a fact: the file served at `/pt/` was
 written in Portuguese — its title, its description, its `og:` tags and its `lang` — before any
@@ -131,7 +148,8 @@ English is written `as const`, and `Messages` is derived from it, so a locale th
 or gives a value the wrong shape does not compile. A locale may leave a key out at run time — the
 English word is used instead, which is what keeps a catalogue being written from crashing — but
 not in a language the app offers: [`completeness.test.ts`](src/i18n/completeness.test.ts) **fails**
-on anything missing, blank, or still in English. Messages that take values are small functions rather than strings with
+on anything missing, blank, or still in English. Messages that take values are small functions
+rather than strings with
 placeholders: the compiler then checks the arguments, and each language can order its words and
 count its plurals its own way (`Intl.PluralRules` is in the platform for the languages that need
 three or more forms).
@@ -142,11 +160,12 @@ the accent is the whole difference between two books: `Jo` is the usual abbrevia
 Gênesis, `josue` finds Josué.
 
 **To add a language:** run `npm run locale:new -- es`, which writes every file it needs, then add
-it to the six shared files the compiler names. Work until `npm run check` is green — the gate
+it to the shared files the compiler and the test gate name between them. Work until `npm run check` is green — the gate
 lists what is left one item at a time, and nothing half-translated ships. Green means every slot
 is filled with something real, not that the words are right: what it cannot check, and what a
 reviewer who reads the language still has to, is in
-[CONTRIBUTING.md](CONTRIBUTING.md#what-the-gate-cannot-check-and-what-a-reviewer-still-has-to). [CONTRIBUTING.md](CONTRIBUTING.md#translations) walks through it. The Bible text is a
+[CONTRIBUTING.md](CONTRIBUTING.md#what-the-gate-cannot-check-and-what-a-reviewer-still-has-to).
+[CONTRIBUTING.md](CONTRIBUTING.md#translations) walks through it. The Bible text is a
 separate job — see [Data](#data) — and neither waits on the other: a language can have an
 interface with no Bible of its own, which is the right answer where no translation can be
 licensed.
@@ -170,11 +189,11 @@ linked to.
 The `/debug/` page stays in English whatever the reader's language, because it is for whoever is
 working on the data, and it is `noindex`.
 
-The Portuguese share picture is still the English one under a Portuguese name
-(`social-preview.pt.jpg`), marked `placeholder: true` where it is declared. The URL is already
-the final one, so the real picture can replace it without a single shared link changing — but a
-link shared before that happens caches the English card on WhatsApp and Facebook, so it is worth
-drawing before any of this is promoted.
+Every language but English still shares the English picture under its own name
+(`social-preview.pt.jpg`, `social-preview.de.jpg` and so on), each marked `placeholder: true`
+where it is declared. The URL is already the final one, so the real picture can replace it without a single
+shared link changing — but a link shared before that happens caches the English card on WhatsApp
+and Facebook, so both are worth drawing before any of this is promoted.
 
 ## Data
 
@@ -185,6 +204,9 @@ The app is built on openly licensed datasets only:
 | Bible text       | [Berean Standard Bible](https://berean.bible/) (BSB), the default                                                                     | [Public domain](https://berean.bible/terms.htm)                                                |
 | Bible text       | [King James Version](https://ebible.org/Scriptures/details.php?id=eng-kjv2006) (KJV), the 1769 text, from eBible.org                  | [Public domain](https://ebible.org/Scriptures/details.php?id=eng-kjv2006) (see the note below) |
 | Bible text       | [Bíblia Livre](https://sites.google.com/site/biblialivre/) (BLIVRE), Brazilian Portuguese, Textus Receptus edition                    | [CC BY 3.0 BR](https://creativecommons.org/licenses/by/3.0/br/)                                |
+| Bible text       | [Lutherbibel 1912](https://ebible.org/Scriptures/details.php?id=deu1912) (LUT), German, from eBible.org                               | [Public domain](https://ebible.org/Scriptures/details.php?id=deu1912)                          |
+| Bible text       | [Riveduta 1927](https://ebible.org/Scriptures/details.php?id=ita1927) (RIV), Italian, the revision made under Giovanni Luzzi          | [Public domain](https://ebible.org/Scriptures/details.php?id=ita1927)                          |
+| Bible text       | [Versión Biblia Libre](https://ebible.org/Scriptures/details.php?id=spavbl) (VBL), Spanish                                            | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)                                |
 | Cross-references | [OpenBible.info](https://www.openbible.info/labs/cross-references/), largely from the public-domain _Treasury of Scripture Knowledge_ | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                      |
 | Original words   | [STEPBible](https://github.com/STEPBible/STEPBible-Data) (TAHOT, TAGNT and their lexicons), from Tyndale House, Cambridge             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                      |
 
@@ -192,13 +214,44 @@ A note on the KJV: it is public domain in the United States and most of the worl
 United Kingdom letters patent that do not expire reserve the right to **print** it, and to import
 printed copies, to the Crown's patentees — Cambridge University Press, Oxford University Press
 and Collins. That is a restriction on printing rather than on a web page, and it has no effect
-outside the UK. The app says so where the translation is chosen. It is offered alongside the BSB, never instead of it, and
+outside the UK. The app says so where the translation is chosen. It is offered alongside the BSB,
+never instead of it, and
 its text is only downloaded for readers who ask for it.
 
 A note on the Bíblia Livre: it is an independent volunteer translation, updated from João Ferreira
 de Almeida's, and the edition used here follows the Textus Receptus — the same textual basis as the
 KJV, which is why it fits the app's verse numbering exactly, all 31,102 of them, with nothing
 dropped or merged. Attribution and the edition's date are shown where the translation is chosen.
+
+A note on the German and the Italian: both are old enough to be published freely. The Lutherbibel
+1912 is the 1912 revision of Luther's translation, the work of a church committee published in
+1912, and a different work from the Luther 1984 and the Luther 2017, which the Deutsche
+Bibelgesellschaft still holds rights in — its own licence page lists those two and no 1912 text.
+The Riveduta 1927 was revised under Giovanni Luzzi, who died on 25 January 1948, so it left
+copyright in Italy and most of the European Union on 1 January 2019; Spain keeps an 80-year term
+for authors who died before 1987, which would run to 2029, and a few countries outside Europe run
+longer still (Mexico is life plus 100). There is no identifiable claimant in any of them, and the
+digitisation adds no new right of its own, but "public domain everywhere" would be too strong.
+Neither name is a registered trademark: a TMview search returns nothing for "Lutherbibel" or
+"Riveduta", and the same search run against "reina valera" correctly returns 68 marks held by the
+national Bible societies — so the zero is a result and not a broken query. TMview searches some
+80 offices rather than a single register, and says nothing about unregistered rights.
+
+A note on how these two are numbered: both follow the Hebrew and Greek verse divisions, which
+part company with the KJV's in a few dozen places — Hebrew Bibles close Genesis 31, Numbers 29,
+1 Samuel 23 and Jonah 1 a verse earlier. eBible republishes them against the KJV numbering this
+app uses, which in a handful of verses means two of the edition's verses are joined into one. No
+verse is missing and none is empty; the text of both is complete. Where the edition's own number
+was left in the text, the build removes it, and the counts are in `data/raw/README.md`.
+
+A note on the Spanish: the Versión Biblia Libre is a modern translation under CC BY-SA 4.0 rather
+than a public-domain one, so its credit and licence travel with every copy and anyone who
+redistributes it must do the same. It is here because it is the only complete Spanish Bible found
+that is both freely licensed and correctly numbered: the obvious candidate, the public-domain
+Reina Valera 1909, is numbered the Hebrew way and was never remapped, so in its machine-readable
+editions — eBible's and CrossWire's alike — eighteen verses are blank and the text of six
+chapters sits one verse away from the number it is filed under. It is not used here for that
+reason.
 
 A note on what the links mean: they are the _Treasury of Scripture Knowledge_'s cross-references,
 which connect passages by shared themes, words, people and events. OpenBible.info readers have
@@ -209,8 +262,9 @@ every link.
 
 The smaller files are committed to [`data/raw/`](data/raw/) exactly as downloaded;
 [`data/sources.json`](data/sources.json) pins every source by SHA-256, and anything not committed
-(the KJV archive, 4.4 MB) is downloaded by the build and checked against its pin, so a dataset is
-never built from a file nobody vouched for. `npm run dev` and `npm run build` turn them into the app's
+(the larger archives — the eBible texts and the STEPBible word data) is downloaded by the build
+and checked against its pin, so a dataset is never built from a file nobody vouched for. `npm run dev` and `npm run build` turn them into the
+app's
 datasets in `public/data/` (generated, git-ignored), validated against the canonical KJV
 versification (31,102 verses).
 
@@ -379,6 +433,16 @@ The code is released under the [MIT License](LICENSE). The data keeps its own li
 > fevereiro de 2018, <http://sites.google.com/site/biblialivre/>, licensed under CC BY 3.0 Brasil
 > (<http://creativecommons.org/licenses/by/3.0/br/>). Modified: whitespace is normalized in 271
 > verses, which moves whitespace only.
+> Scripture text: Lutherbibel 1912, the 1912 revision of Martin Luther's German translation,
+> public domain. Modified: the edition's own verse numbers, which differ from the numbering used
+> here, are removed from the text of 358 verses, and a corrupt token from Judges 11:25.
+> Scripture text: Riveduta 1927, the Italian revision made under Giovanni Luzzi, public domain.
+> Modified: the edition's own verse numbers, which differ from the numbering used here, are
+> removed from the text of 228 verses, and a running head from three more.
+> Scripture text: Versión Biblia Libre (VBL), Copyright © 2018–2020 Jonathan Gallagher y Shelly
+> Barrios de Avila, with Gustavo Sanabria and Rebekah Põldaas, licensed under CC BY-SA 4.0
+> (<https://creativecommons.org/licenses/by-sa/4.0/>). Modified: a space before a colon is moved
+> in one verse, which moves whitespace only.
 > Original-language words: STEP Bible (CC BY 4.0), based on work at Tyndale House, Cambridge.
 > Modified: reduced to the dictionary forms used in each verse, keyed to KJV verse numbering,
 > with psalm superscriptions left out.

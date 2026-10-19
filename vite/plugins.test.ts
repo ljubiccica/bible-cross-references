@@ -9,7 +9,7 @@ import { firstFrame } from './first-frame.ts';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { manifestFileName, offline } from './offline.ts';
-import { PAGE_LIST, PAGES, ROOT_DIR } from './site.ts';
+import { PAGE_LIST, PAGES, ROOT_DIR, pageUrl } from './site.ts';
 import { SITE_COPY, SITE_PAGE_IDS } from '../src/i18n/site-copy.ts';
 import { preloadScript, siteHead } from './site-head.ts';
 import { DEFAULT_LOCALE_ID, LOCALE_IDS, type LocaleId } from '../src/i18n/locale-id.ts';
@@ -37,6 +37,9 @@ function resolveConfig(plugin: Plugin, command: 'build' | 'serve', base = '/'): 
   const handler = typeof configResolved === 'function' ? configResolved : configResolved?.handler;
   void handler?.call({} as never, { command, base } as never);
 }
+
+/** The path the site is deployed under, which every emitted URL is built from. */
+const BASE = '/bible-cross-references/';
 
 const HTML = '<html><head><title>t</title></head><body><div id="root"></div></body></html>';
 
@@ -153,9 +156,10 @@ describe('siteHead', () => {
     ).toContain('noindex');
   });
 
-  it('emits a sitemap', () => {
+  /** Runs the plugin's `generateBundle` and returns the sitemap it emitted. */
+  function sitemapXml(): string {
     const plugin = siteHead();
-    resolveConfig(plugin, 'build', '/bible-cross-references/');
+    resolveConfig(plugin, 'build', BASE);
     const emitted: { fileName?: string; source?: string }[] = [];
     const generate = plugin.generateBundle;
     const handler = typeof generate === 'function' ? generate : generate?.handler;
@@ -165,8 +169,45 @@ describe('siteHead', () => {
       {} as never,
       false,
     );
-    const sitemap = emitted.find((file) => file.fileName === 'sitemap.xml');
-    expect(sitemap?.source).toContain('<urlset');
+    return emitted.find((file) => file.fileName === 'sitemap.xml')?.source ?? '';
+  }
+
+  it('emits a sitemap', () => {
+    expect(sitemapXml()).toContain('<urlset');
+  });
+
+  /**
+   * Every page in every language, and nothing else.
+   *
+   * Listing the pages is how a language is found at all: a language missing here is a language
+   * no search engine is told about, which is invisible rather than broken and so can ship
+   * unnoticed for months. Derived from `PAGE_LIST` rather than written out, so the language added
+   * next week is covered the day it is added.
+   */
+  it('lists every page of every language, and keeps the debug page out', () => {
+    const locations = [...sitemapXml().matchAll(/<loc>([^<]+)<\/loc>/g)].map(([, url]) => url);
+    const listed = PAGE_LIST.filter((page) => page.listed).map((page) => pageUrl(page, BASE));
+
+    expect(locations.toSorted()).toEqual(listed.toSorted());
+    // The debug page is `noindex` in its own head; it must not be advertised here either.
+    expect(locations.some((url) => url?.includes('/debug/'))).toBe(false);
+  });
+
+  /**
+   * Each entry points at every language of that same page, itself and `x-default` included.
+   *
+   * A sitemap whose alternates are not reciprocal is one Google discards outright, so a language
+   * that reaches the loop above but not this one is still invisible.
+   */
+  it('gives every entry a reciprocal alternate for every language', () => {
+    const blocks = [...sitemapXml().matchAll(/<url>([\s\S]*?)<\/url>/g)].map(([, body]) => body);
+    expect(blocks.length).toBe(PAGE_LIST.filter((page) => page.listed).length);
+
+    const wanted = [...LOCALE_IDS, 'x-default'].toSorted();
+    for (const block of blocks) {
+      const tags = [...(block ?? '').matchAll(/hreflang="([^"]+)"/g)].map(([, tag]) => tag);
+      expect(tags.toSorted(), block).toEqual(wanted);
+    }
   });
 });
 
@@ -185,6 +226,51 @@ describe('offline', () => {
     const manifest = emitted.find((file) => file.fileName === 'manifest.webmanifest');
     const parsed: unknown = JSON.parse(manifest?.source ?? '{}');
     expect(parsed).toMatchObject({ start_url: './', scope: './', display: 'standalone' });
+  });
+
+  /**
+   * Every language's manifest, and the identity each one claims.
+   *
+   * `id` is the one manifest member resolved against the *origin* of `start_url` rather than
+   * against the manifest's own URL, so the `./de/` that looks right beside `start_url` would
+   * name this app `https://trekhleb.dev/de/` — outside the site's own path, and for English
+   * `https://trekhleb.dev/` itself. Left out, it defaults to the resolved `start_url`, which is
+   * what was meant. A browser fixes an installed app's identity at install time and never
+   * revisits it, so this is checked rather than remembered.
+   */
+  it('gives every language a manifest that claims an identity inside the app', () => {
+    const plugin = offline();
+    resolveConfig(plugin, 'build', BASE);
+    const emitted: { fileName?: string; source?: string }[] = [];
+    const generate = plugin.generateBundle;
+    const handler = typeof generate === 'function' ? generate : generate?.handler;
+    void handler?.call(
+      { emitFile: (file: { fileName?: string; source?: string }) => emitted.push(file) } as never,
+      {} as never,
+      {} as never,
+      false,
+    );
+
+    for (const locale of LOCALE_IDS) {
+      const name = manifestFileName(locale);
+      const file = emitted.find((emitted) => emitted.fileName === name);
+      expect(file, name).toBeDefined();
+      const parsed = JSON.parse(file?.source ?? '{}') as Record<string, unknown>;
+
+      const start = locale === DEFAULT_LOCALE_ID ? './' : `./${locale}/`;
+      expect(parsed['start_url'], name).toBe(start);
+      // One scope for all of them, so a link into another language stays inside the app.
+      expect(parsed['scope'], name).toBe('./');
+      expect(parsed['display'], name).toBe('standalone');
+      // Absent, or absolute under the deploy path. Never relative: see above.
+      const id: unknown = parsed['id'];
+      if (id !== undefined) {
+        expect(
+          typeof id === 'string' && id.startsWith(BASE),
+          `${name}: id resolves outside the app`,
+        ).toBe(true);
+      }
+    }
   });
 
   it('links the manifest from an app page of a build, and nowhere else', () => {
@@ -449,6 +535,20 @@ describe('the inline preload script', () => {
     [
       'a Portuguese page whose link names a translation',
       { pageLocale: 'pt' as const, search: '?t=kjv' },
+    ],
+    // Ukrainian is the case Portuguese cannot cover: the app speaks it and has no Bible in it,
+    // so `byLocale.uk` and `fallback` are the same file. A bug in the `byLocale` branch is
+    // invisible for a language whose answer the fallback happens to give anyway — which is
+    // exactly why it needs rows of its own rather than being assumed to behave like `pt`.
+    ['a Ukrainian page', { pageLocale: 'uk' as const }],
+    ['a Ukrainian browser on the English page', { languages: ['uk-UA', 'uk'] }],
+    [
+      'a Ukrainian page whose link names a translation the app has',
+      { pageLocale: 'uk' as const, search: '?t=luther1912' },
+    ],
+    [
+      'a Ukrainian page for a reader who stored a translation',
+      { pageLocale: 'uk' as const, stored: { [TRANSLATION_STORAGE_KEY]: 'vbl' } },
     ],
   ])('preloads what the app will load, for %s', (_name, options) => {
     expect(preloadedBy(options)).toEqual([PLAN.shared, appWouldLoad(options)]);

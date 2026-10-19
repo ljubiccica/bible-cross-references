@@ -495,7 +495,8 @@ function ConnectionSection({
   readonly icon: IconComponent;
   readonly title: string;
   readonly description: string;
-  readonly countLabel: string;
+  /** What the count counts, inflected for it — passed straight to `PanelSection`. */
+  readonly countLabel: (plural: number) => string;
   readonly connections: readonly Connection[];
   readonly showSourceVerse: boolean;
   readonly data: VizData;

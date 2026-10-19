@@ -147,4 +147,141 @@ export const SITE_COPY: Readonly<Record<LocaleId, SiteCopy>> = {
       alt: 'Arcos ligando os versículos da Bíblia, de Gênesis a Apocalipse, coloridos por gênero',
     },
   },
+  de: {
+    siteName: 'Bibel-Querverweise',
+    hreflang: 'de',
+    ogLocale: 'de_DE',
+    pages: {
+      main: {
+        title: 'Bibel-Querverweise',
+        description:
+          'Alle 344.799 Querverweise der Bibel auf einen Blick: jeder Vers auf einer Linie, seine Verbindungen als Bögen, und jedes Kapitel mit Fäden dorthin, wohin seine Verse führen.',
+        noscript:
+          'Bibel-Querverweise zeichnet die 344.799 Querverweise zwischen den Versen der Bibel. Dafür wird JavaScript gebraucht.',
+      },
+      threads: {
+        title: 'Fäden · Bibel-Querverweise',
+        description:
+          'Lesen Sie ein beliebiges Kapitel der Bibel und sehen Sie dabei, wohin die Querverweise jedes Verses führen, von 1. Mose bis zur Offenbarung.',
+        noscript:
+          'Fäden zeigt, wohin jeder Vers eines Kapitels in der ganzen Bibel führt. Dafür wird JavaScript gebraucht.',
+      },
+    },
+    manifest: {
+      name: 'Bibel-Querverweise',
+      shortName: 'Querverweise',
+      description:
+        'Alle Querverweise der Bibel als Bögen gezeichnet, und jedes Kapitel mit seinen Fäden.',
+    },
+    socialImage: {
+      file: 'social-preview.de.jpg',
+      from: 'social-preview.jpg',
+      placeholder: true,
+      alt: 'Bögen zwischen den Versen der Bibel, von 1. Mose bis zur Offenbarung, nach Gattung eingefärbt',
+    },
+  },
+  it: {
+    siteName: 'Riferimenti incrociati della Bibbia',
+    hreflang: 'it',
+    ogLocale: 'it_IT',
+    pages: {
+      main: {
+        title: 'Riferimenti incrociati della Bibbia',
+        description:
+          'Esplora tutti i 344.799 riferimenti incrociati della Bibbia: ogni versetto su una linea con i suoi collegamenti ad archi, e ogni capitolo con i fili verso i versetti a cui rimanda.',
+        noscript:
+          'Riferimenti incrociati della Bibbia disegna i 344.799 riferimenti fra i versetti della Bibbia. Serve JavaScript.',
+      },
+      threads: {
+        title: 'Fili · Riferimenti incrociati della Bibbia',
+        description:
+          'Leggi un capitolo qualsiasi della Bibbia e vedi dove portano i riferimenti incrociati di ogni versetto, dalla Genesi all’Apocalisse.',
+        noscript:
+          'Fili mostra dove porta ogni versetto di un capitolo nell’intera Bibbia. Serve JavaScript.',
+      },
+    },
+    manifest: {
+      name: 'Riferimenti incrociati della Bibbia',
+      shortName: 'Riferimenti',
+      description:
+        'Tutti i riferimenti incrociati della Bibbia disegnati ad archi, e ogni capitolo con i suoi fili.',
+    },
+    socialImage: {
+      file: 'social-preview.it.jpg',
+      from: 'social-preview.jpg',
+      placeholder: true,
+      alt: 'Archi che collegano i versetti della Bibbia, dalla Genesi all’Apocalisse, colorati per genere',
+    },
+  },
+  es: {
+    siteName: 'Referencias cruzadas de la Biblia',
+    hreflang: 'es',
+    ogLocale: 'es_ES',
+    pages: {
+      main: {
+        title: 'Referencias cruzadas de la Biblia',
+        description:
+          'Explore las 344.799 referencias cruzadas de la Biblia: cada versículo en una línea con sus conexiones en arcos, y cada capítulo con hilos hacia los versículos adonde llevan.',
+        noscript:
+          'Referencias cruzadas de la Biblia dibuja las 344.799 referencias entre los versículos de la Biblia. Hace falta JavaScript.',
+      },
+      threads: {
+        title: 'Hilos · Referencias cruzadas de la Biblia',
+        description:
+          'Lea cualquier capítulo de la Biblia y vea adónde llevan las referencias cruzadas de cada versículo, de Génesis a Apocalipsis.',
+        noscript:
+          'Hilos muestra adónde lleva cada versículo de un capítulo en toda la Biblia. Hace falta JavaScript.',
+      },
+    },
+    manifest: {
+      name: 'Referencias cruzadas de la Biblia',
+      shortName: 'Referencias',
+      description:
+        'Todas las referencias cruzadas de la Biblia dibujadas en arcos, y cada capítulo con sus hilos.',
+    },
+    socialImage: {
+      file: 'social-preview.es.jpg',
+      from: 'social-preview.jpg',
+      placeholder: true,
+      alt: 'Arcos que unen los versículos de la Biblia, de Génesis a Apocalipsis, coloreados por género',
+    },
+  },
+  uk: {
+    siteName: 'Перехресні посилання Біблії',
+    hreflang: 'uk',
+    ogLocale: 'uk_UA',
+    pages: {
+      main: {
+        title: 'Перехресні посилання Біблії',
+        description:
+          'Перегляньте всі 344 799 перехресних посилань Біблії: кожен вірш на одній лінії з арками своїх зв’язків, а кожна глава — з лініями до віршів, куди вони ведуть.',
+        noscript:
+          'Сайт «Перехресні посилання Біблії» малює 344 799 перехресних посилань між віршами Біблії. Для роботи потрібен JavaScript.',
+      },
+      threads: {
+        title: 'Глави · Перехресні посилання Біблії',
+        description:
+          'Читайте будь-яку главу Біблії й бачте, куди ведуть перехресні посилання кожного вірша, від Буття до Об’явлення.',
+        noscript:
+          '«Глави» показують, куди ведуть перехресні посилання кожного вірша глави — через усю Біблію. Для роботи потрібен JavaScript.',
+      },
+    },
+    manifest: {
+      name: 'Перехресні посилання Біблії',
+      // Nine characters: a home screen truncates around twelve, and «Посилання Бі…» would
+      // say less than «Посилання» does.
+      shortName: 'Посилання',
+      description:
+        'Усі перехресні посилання Біблії, намальовані арками, і кожна глава зі своїми лініями.',
+    },
+    socialImage: {
+      file: 'social-preview.uk.jpg',
+      // Still the English picture: its title and the book names on it are English pixels. The
+      // URL is already the final one, so a Ukrainian picture can replace it without changing a
+      // single link.
+      from: 'social-preview.jpg',
+      placeholder: true,
+      alt: 'Арки, що з’єднують вірші Біблії, від Буття до Об’явлення, забарвлені за жанром',
+    },
+  },
 };

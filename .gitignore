@@ -12,9 +12,13 @@ coverage/
 # Data: the upstream files (data/raw/) are committed; the datasets built from them are not, since
 # `npm run dev` and `npm run build` rebuild them (see README.md → "Data").
 public/data/
-# Except this one: 4.4 MB of archive for one translation is not worth keeping in the repository,
-# so the build downloads it on demand and checks it against its pin in data/sources.json.
+# Except these: 4-5 MB of archive apiece for one translation is not worth keeping in the
+# repository, so the build downloads them on demand and checks each against its pin in
+# data/sources.json.
 data/raw/eng-kjv2006_vpl.zip
+data/raw/deu1912_vpl.zip
+data/raw/ita1927_vpl.zip
+data/raw/spavbl_vpl.zip
 # And these: 96 MB of tagged Hebrew and Greek, which STEPBible asks to be fetched from them
 # rather than passed on second-hand. The build downloads them against their pins too.
 data/raw/stepbible-*.txt

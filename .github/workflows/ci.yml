@@ -40,7 +40,7 @@ jobs:
           cache: npm
       - run: npm ci
       # The sources too large to keep in the repository (see data/raw/README.md) are downloaded by
-      # the build: the KJV archive and the tagged Hebrew and Greek, about 110 MB in all. The key
+      # the build: four eBible archives and the tagged Hebrew and Greek, about 130 MB in all. The key
       # is the whole pin file, so any re-pin fetches all of them again — which is the safe way
       # round, since the build refuses a local file that does not match its pin rather than
       # replacing it. Between re-pins nothing is downloaded, so a day when an upstream host is

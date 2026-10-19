@@ -20,9 +20,12 @@ export const pt: LocaleMessages = {
   'reference.unknownBook': (query) => `Livro desconhecido “${query}”.`,
   'reference.ambiguous': (query, candidates) => `“${query}” pode ser ${candidates}.`,
   'reference.or': ' ou ',
-  'reference.chapters': (book, count) => `${book} tem ${count} capítulos.`,
-  'reference.verses': (reference, chapter, count) =>
-    `${reference} ${chapter} tem ${count} versículos.`,
+  'reference.chapters': (book, count, plural) =>
+    plural === 1 ? `${book} tem ${count} capítulo.` : `${book} tem ${count} capítulos.`,
+  'reference.verses': (reference, chapter, count, plural) =>
+    plural === 1
+      ? `${reference} ${chapter} tem ${count} versículo.`
+      : `${reference} ${chapter} tem ${count} versículos.`,
 
   // Plural and masculine, agreeing with "Filtros".
   'menu.filtersChanged': 'Filtros (alterados)',
@@ -52,6 +55,22 @@ export const pt: LocaleMessages = {
     'Texto bíblico: Bíblia Livre (BLIVRE), © Diego Santos, Mario Sérgio e Marco Teles, ' +
     'fevereiro de 2018 (edição Textus Receptus), https://sites.google.com/site/biblialivre/. ' +
     'Alterações: os espaços foram normalizados; nenhuma palavra foi alterada.',
+  'attribution.luther1912':
+    'Texto bíblico: Lutherbibel 1912 (LUT), a revisão de 1912 da tradução alemã de Martinho ' +
+    'Lutero. Domínio público. Alterações: os números de versículo da própria edição foram ' +
+    'retirados de 358 versículos, e um fragmento corrompido de Juízes 11:25; nenhuma palavra ' +
+    'foi alterada.',
+  'attribution.riveduta1927':
+    'Texto bíblico: Riveduta 1927 (RIV), a revisão italiana feita sob a direção de Giovanni ' +
+    'Luzzi. Domínio público. Alterações: os números de versículo da própria edição foram ' +
+    'retirados de 228 versículos, um cabeçalho de página de três e um caractere solto de ' +
+    '2 Samuel 20:26; nenhuma palavra foi alterada.',
+  'attribution.vbl':
+    'Texto bíblico: Versión Biblia Libre (VBL), © 2018–2020 Jonathan Gallagher y Shelly Barrios ' +
+    'de Avila, com Gustavo Sanabria e Rebekah Põldaas, ' +
+    'https://ebible.org/Scriptures/details.php?id=spavbl, sob licença CC BY-SA 4.0. ' +
+    'Alterações: um espaço antes dos dois-pontos foi movido em um versículo; nenhuma palavra ' +
+    'foi alterada.',
   'license.publicDomain': 'Domínio público',
   'menu.translation': 'Tradução',
   'menu.translation.failed': (name) => `Não foi possível carregar ${name}.`,
@@ -69,14 +88,22 @@ export const pt: LocaleMessages = {
   'testament.NT': 'Novo Testamento',
 
   'stats.label': 'Resumo',
-  'stats.verses': (count) => [{ strong: count }, ' versículos'],
-  'stats.links': (shown, total) =>
-    total === null
-      ? [{ strong: shown }, ' ligações exibidas']
-      : [{ strong: shown }, ` de ${total} ligações exibidas`],
+  'stats.verses': (count, plural) => [
+    { strong: count },
+    plural === 1 ? ' versículo' : ' versículos',
+  ],
+  'stats.links': (shown, total, plural) => {
+    const links = plural === 1 ? 'ligação exibida' : 'ligações exibidas';
+    return total === null
+      ? [{ strong: shown }, ` ${links}`]
+      : [{ strong: shown }, ` de ${total} ${links}`];
+  },
   // "dos versículos conectados" would read as "of the connected verses"; this says that they are.
   'stats.connected': (share) => [{ strong: share }, ' dos versículos estão conectados'],
-  'stats.crossTestament': (count) => [{ strong: count }, ' ligações entre os testamentos'],
+  'stats.crossTestament': (count, plural) => [
+    { strong: count },
+    plural === 1 ? ' ligação entre os testamentos' : ' ligações entre os testamentos',
+  ],
   'hint.zoom': 'para ampliar',
   'hint.pan': 'para mover',
   'hint.focus': 'para focar',
@@ -111,16 +138,16 @@ export const pt: LocaleMessages = {
   'panel.verses': 'Versículos',
   'panel.verses.note': 'toque num para focá-lo',
   'panel.none': 'Nenhuma',
-  'panel.items': 'itens',
-  'panel.passages': 'passagens',
-  'panel.linksCounted': 'ligações',
-  'panel.versesCounted': 'versículos',
+  'panel.items': (plural) => (plural === 1 ? 'item' : 'itens'),
+  'panel.passages': (plural) => (plural === 1 ? 'passagem' : 'passagens'),
+  'panel.linksCounted': (plural) => (plural === 1 ? 'ligação' : 'ligações'),
+  'panel.versesCounted': (plural) => (plural === 1 ? 'versículo' : 'versículos'),
 
   // The language names are already in the case Portuguese wants them: a message puts its
   // arguments in place, it does not reshape them.
   'words.heading': (language) => `Mesma palavra ${language}`,
   'words.note': 'onde mais ela aparece',
-  'words.counted': 'palavras',
+  'words.counted': (plural) => (plural === 1 ? 'palavra' : 'palavras'),
   'words.showMore': (count) => `Ver mais ${count}`,
   'language.hebrew': 'hebraica',
   'language.greek': 'grega',

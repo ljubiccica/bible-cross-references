@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { crossReferencesDatasetPath, translationDatasetPath } from '../../core/datasets/paths.ts';
+import { crossReferencesDatasetPath } from '../../core/datasets/paths.ts';
 import {
   createCrossReferenceColumns,
   createTranslationFile,
@@ -15,7 +15,7 @@ import {
   translationLoader,
   vizCoreLoader,
 } from './viz-data.ts';
-import { vizCrossReferenceSource, vizDatasetPaths } from './viz-datasets.ts';
+import { sharedDatasetPaths, vizCrossReferenceSource } from './viz-datasets.ts';
 
 const GEN_1_1 = verseIndex('Gen', 1, 1);
 
@@ -152,12 +152,18 @@ describe('the original words', () => {
   });
 });
 
-describe('vizDatasetPaths', () => {
-  it('names the links and the default text, which the HTML preloads', () => {
-    expect(vizDatasetPaths()).toEqual([
-      translationDatasetPath('bsb'),
+describe('sharedDatasetPaths', () => {
+  it('names the links and no translation, because the worker serves every language', () => {
+    expect(sharedDatasetPaths()).toEqual([
       crossReferencesDatasetPath(vizCrossReferenceSource().id),
     ]);
+  });
+
+  it('names nothing under the translations directory', () => {
+    // The point of the list, said as a property rather than as the value above: whichever
+    // translation became the default, precaching it would push one language's Bible onto
+    // readers of the other five.
+    expect(sharedDatasetPaths().some((path) => path.includes('translations/'))).toBe(false);
   });
 
   it('draws the source that is on by default', () => {

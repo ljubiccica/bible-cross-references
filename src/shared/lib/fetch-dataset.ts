@@ -38,14 +38,25 @@ export interface FetchedDataset {
   readonly report: Omit<DatasetLoadReport, 'processMs'>;
 }
 
-/** Fetches a generated dataset file (a path relative to the site root) and parses its JSON. */
-export async function fetchDataset(path: string): Promise<FetchedDataset> {
+/**
+ * Fetches a generated dataset file (a path relative to the site root) and parses its JSON.
+ *
+ * `freshness` is for the one caller that must not be answered from the browser's HTTP cache:
+ * the retry in `loadDataset`, which is refetching precisely because the copy it has cannot be
+ * read. Datasets sit at URLs that never change, and this site is served by a host whose
+ * `Cache-Control` the project cannot set, so a plain retry can be handed the same bad bytes
+ * that failed a moment ago — and the worker then writes them back into the offline cache.
+ */
+export async function fetchDataset(
+  path: string,
+  freshness: RequestCache = 'default',
+): Promise<FetchedDataset> {
   const url = `${import.meta.env.BASE_URL}${path}`;
   const downloadStart = performance.now();
   let response: Response;
   try {
     // A plain GET, so the browser reuses the download the HTML preloaded.
-    response = await fetch(url);
+    response = await fetch(url, { cache: freshness });
   } catch (error) {
     throw new DatasetUnavailableError(
       path,
@@ -146,7 +157,7 @@ export async function loadDataset<T>(
     }
     const evicted = await evictCachedDataset(fetched.report.url);
     try {
-      const fresh = await fetchDataset(path);
+      const fresh = await fetchDataset(path, 'reload');
       const { value, ms } = measure(() => parse(fresh.json));
       return { value, report: { ...fresh.report, processMs: ms } };
     } catch (retryError) {

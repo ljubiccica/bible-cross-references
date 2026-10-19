@@ -77,7 +77,7 @@ describe('PanelSection', () => {
   });
 
   it('shows a count when there is one to show, and names what it counts', () => {
-    renderSection({ count: 1234, countLabel: 'passages' });
+    renderSection({ count: 1234, countLabel: (plural) => (plural === 1 ? 'passage' : 'passages') });
     const toggle = screen.getByRole('button');
     expect(toggle.textContent).toContain('1,234');
     expect(toggle.textContent).toContain('passages');
@@ -89,7 +89,7 @@ describe('PanelSection', () => {
   });
 
   it('shows a count of zero rather than hiding it', () => {
-    renderSection({ count: 0, countLabel: 'passages' });
+    renderSection({ count: 0, countLabel: () => 'passages' });
     expect(screen.getByRole('button').textContent).toContain('0');
   });
 

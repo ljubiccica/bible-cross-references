@@ -39,7 +39,14 @@ describe('fingerprintDataset', () => {
 
   it('counts verses, empty verses and characters', () => {
     const { shape } = fingerprint(['one', '', 'three']);
-    expect(shape).toEqual({ verses: 3, empty: 1, characters: 8, supplied: 0 });
+    expect(shape).toEqual({ verses: 3, empty: 1, characters: 8, supplied: 0, digits: 0 });
+  });
+
+  it('counts the verses carrying a number, which is where editorial debris shows up', () => {
+    // Three chapter headings reached readers inside the Riveduta's text; each left a digit in a
+    // text that otherwise has two. A count in the manifest is what makes the next one visible.
+    const { shape } = fingerprint(['Jesus wept.', 'and it was 46 years', 'Matteo Capitolo 4']);
+    expect(shape['digits']).toBe(2);
   });
 
   it('moves when a single character of scripture changes', () => {
@@ -160,5 +167,45 @@ describe('describeManifestDrift', () => {
     expect(describeManifestDrift(base, {})).toEqual([
       'data/translations/kjv.json: in the manifest but no longer built',
     ]);
+  });
+});
+
+describe('describeManifestDrift, when only the shape moves', () => {
+  const entry = (shape: Record<string, number>) => ({
+    sha256: 'a'.repeat(64),
+    bytes: 10,
+    shape,
+  });
+
+  /**
+   * The digest covers the dataset; the shape is computed here. So a change to `shapeOf` — a
+   * count that starts counting something different — moves the numbers in the lock file while
+   * every digest stays put. Skipping on the digest alone rewrote the file under a success
+   * message, which is the failure a lock file exists to make impossible.
+   */
+  it('notices a count whose value changed, with the bytes identical', () => {
+    const before = { 'a.json': entry({ verses: 31102, empty: 0 }) };
+    const after = { 'a.json': entry({ verses: 31102, empty: 999 }) };
+    expect(describeManifestDrift(before, after)).toEqual(['a.json: empty 0 → 999']);
+  });
+
+  it('notices a count that appeared, and one that went away', () => {
+    expect(
+      describeManifestDrift(
+        { 'a.json': entry({ verses: 1 }) },
+        { 'a.json': entry({ verses: 1, digits: 4 }) },
+      ),
+    ).toEqual(['a.json: digits 0 → 4']);
+    expect(
+      describeManifestDrift(
+        { 'a.json': entry({ verses: 1, digits: 4 }) },
+        { 'a.json': entry({ verses: 1 }) },
+      ),
+    ).toEqual(['a.json: digits 4 → 0']);
+  });
+
+  it('stays quiet when nothing moved at all', () => {
+    const same = { 'a.json': entry({ verses: 31102, empty: 0 }) };
+    expect(describeManifestDrift(same, same)).toEqual([]);
   });
 });

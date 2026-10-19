@@ -39,13 +39,25 @@ function endonymOf(language: string): string {
   return endonym;
 }
 
-/** The translations grouped under their language, the reader's own language first. */
-function groupByLanguage(
+/**
+ * The translations grouped under their language: the interface's own language first, then any
+ * language the reader's browser asks for, then the rest in the order the registry lists them.
+ *
+ * The middle rank is what makes a Bible findable in a language the interface does not speak. A
+ * reader whose browser is German gets English menus, because there are none in German — and
+ * without this their Bible sits third, behind two languages they never asked for, under a button
+ * that says only "BSB". A reader who asks for nothing but the interface's own language sees no
+ * change at all; one who asks for a second (`en-US, es-MX`, common enough in the United States)
+ * finds that second language lifted too, which is the point rather than a side effect.
+ */
+export function groupByLanguage(
   preferred: string,
+  accepted: readonly string[] | null | undefined = [],
 ): readonly { readonly language: string; readonly items: readonly TranslationManifest[] }[] {
+  const baseOf = (tag: string) => tag.toLowerCase().split('-')[0] ?? tag;
   const groups = new Map<string, TranslationManifest[]>();
   for (const translation of TRANSLATION_MANIFESTS) {
-    const base = translation.language.toLowerCase().split('-')[0] ?? translation.language;
+    const base = baseOf(translation.language);
     const existing = groups.get(base);
     if (existing) {
       existing.push(translation);
@@ -53,12 +65,13 @@ function groupByLanguage(
       groups.set(base, [translation]);
     }
   }
-  const base = preferred.toLowerCase().split('-')[0] ?? preferred;
+  const base = baseOf(preferred);
+  const asked = new Set((accepted ?? []).map(baseOf));
   return [...groups.entries()]
     .map(([language, items]) => ({ language, items }))
     .sort((a, b) => {
-      // The reader's own language first; the rest keep the order the registry lists them in.
-      const rank = (language: string) => (language === base ? 0 : 1);
+      // Sorting is stable, so everything inside a rank keeps the registry's order.
+      const rank = (language: string) => (language === base ? 0 : asked.has(language) ? 1 : 2);
       return rank(a.language) - rank(b.language);
     });
 }
@@ -87,7 +100,11 @@ export function TranslationMenu({
   // Both visualizations stay mounted, so each one's radios need a group name of their own.
   const group = useId();
   const languageId = useId();
-  const groups = groupByLanguage(locale.tag);
+  // Passed rather than read inside, so the ranking can be tested without a browser. Some
+  // embedded browsers leave `navigator.languages` empty, undefined or null whatever the DOM
+  // types promise, and `groupByLanguage` takes all three: the cost is the ordering, not a menu
+  // that throws while rendering.
+  const groups = groupByLanguage(locale.tag, navigator.languages);
 
   return (
     <MenuButton label={t('menu.translation')} value={current.abbreviation} busy={pending}>

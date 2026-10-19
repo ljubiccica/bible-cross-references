@@ -8,7 +8,7 @@ import {
   type TranslationTextFile,
 } from '../../../src/core/datasets/formats.ts';
 import { stripByteOrderMark } from '../lib/files.ts';
-import { createNotice } from '../lib/notices.ts';
+import { omittedVerseNotices } from '../lib/omitted-verses.ts';
 
 /**
  * Importer for the Berean Standard Bible plain-text edition (https://bereanbible.com/bsb.txt).
@@ -88,17 +88,7 @@ export function importBsbText(text: string, provenance: DatasetProvenance): Tran
     provenance,
     license: manifest.license,
     attribution: manifest.attribution,
-    notices:
-      omitted.length > 0
-        ? [
-            createNotice(
-              'info',
-              'Verses without text: the translation omits them (they are absent from the ' +
-                'earliest manuscripts) and gives them in footnotes instead.',
-              omitted,
-            ),
-          ]
-        : [],
+    notices: omittedVerseNotices('bsb', omitted),
     translationId: 'bsb',
     verses: complete,
   };

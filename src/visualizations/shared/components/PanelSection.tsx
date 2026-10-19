@@ -35,7 +35,8 @@ export function PanelSection({
   /** Shown at the end of the band; omit where a count would mean nothing. */
   readonly count?: number;
   /** What the count counts, for a reader who cannot see the section, e.g. "passages". */
-  readonly countLabel?: string;
+  /** What the count counts, inflected for it: `1 passage`, `23 passages`. */
+  readonly countLabel?: (plural: number) => string;
   /** Anything between the name and the count, e.g. the genre strip. */
   readonly trailing?: ReactNode;
   /** Whether the section starts open, before the reader has said otherwise. */
@@ -64,7 +65,10 @@ export function PanelSection({
           {count !== undefined && (
             <span className={styles.count}>
               {n(count)}
-              <span className={styles.visuallyHidden}> {countLabel ?? t('panel.items')}</span>
+              <span className={styles.visuallyHidden}>
+                {' '}
+                {(countLabel ?? t('panel.items'))(count)}
+              </span>
             </span>
           )}
           <ExpandIcon className={styles.chevron} />

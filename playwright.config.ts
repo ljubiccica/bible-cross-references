@@ -33,7 +33,14 @@ export default defineConfig({
   retries: process.env['CI'] ? 2 : 0,
   // Left to Playwright locally; CI machines have two cores to spare.
   ...(process.env['CI'] ? { workers: 2 } : {}),
-  reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  // The HTML report locally as well as on CI: it is the only way to look at a failed screenshot
+  // comparison, which it shows as expected/actual/diff with a slider. `list` stays alongside it
+  // so a run still says what it is doing in the terminal, and `open: 'never'` keeps it from
+  // launching a browser — `npm run test:report` does that when you want it. Both output
+  // directories are gitignored.
+  reporter: process.env['CI']
+    ? [['github'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',

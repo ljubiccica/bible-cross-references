@@ -33,14 +33,18 @@ export function LinkStats({ summary, hint }: LinkStatsProps) {
   return (
     <div className={styles.stats} aria-label={t('stats.label')}>
       <span>
-        <Line parts={t('stats.verses')(n(verseCount))} /> ·{' '}
+        <Line parts={t('stats.verses')(n(verseCount), verseCount)} /> ·{' '}
         <Line
-          parts={t('stats.links')(n(shownLinks), shownLinks < totalLinks ? n(totalLinks) : null)}
+          parts={t('stats.links')(
+            n(shownLinks),
+            shownLinks < totalLinks ? n(totalLinks) : null,
+            shownLinks,
+          )}
         />
       </span>
       <span className={styles.secondary}>
         <Line parts={t('stats.connected')(share(connectedVerses, verseCount))} /> ·{' '}
-        <Line parts={t('stats.crossTestament')(n(crossTestamentLinks))} />
+        <Line parts={t('stats.crossTestament')(n(crossTestamentLinks), crossTestamentLinks)} />
       </span>
       {hint !== undefined && (
         <>

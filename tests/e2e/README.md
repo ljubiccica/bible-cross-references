@@ -155,11 +155,18 @@ the app currently looks like; a change to one of those files in a diff is a chan
 | The loading screen                             | `loading`                      |
 | The error screen                               | `load-error`                   |
 | The debug dashboard                            | `debug`                        |
-| **In Portuguese**                              |                                |
-| The arcs                                       | `pt-arcs`                      |
-| A verse and its cross-references               | `pt-panel`                     |
-| The reading threads                            | `pt-threads`                   |
-| The picker, grouped by language                | `pt-menu-translation`          |
+| **Every other language**                       |                                |
+| The arcs, with the interface translated        | `<id>-arcs`                    |
+| A verse and its cross-references               | `<id>-panel`                   |
+| The reading threads                            | `<id>-threads`                 |
+| …with every section folded away                | `<id>-panel-collapsed`         |
+| The picker, this language's Bibles first       | `<id>-translations`            |
+
+English is photographed screen by screen; every other language the app speaks gets the five
+shots above, written as a loop over `LOCALE_IDS` so the next language arrives with its own
+pictures instead of waiting for somebody to copy a block. `<id>` is the language: `de-panel`,
+`uk-threads`, and so on. What changes with the language is the chrome and the text, never the
+canvas behind them, which is why a translation needs five pictures and not forty.
 
 Each file is suffixed with the project and platform (`-visual-phone-linux.png`), so baselines made
 on macOS and on Linux sit side by side rather than overwriting each other.
@@ -170,7 +177,37 @@ The first run on a new machine writes its own baselines and reports them as fail
 Playwright saying "nothing to compare against yet", not a problem with the app.
 
 After a deliberate design change, re-photograph with `npm run test:visual:update` and look at the
-new images before committing them. To make baselines that CI could share, draw them inside the
+new images before committing them. Prefer `--update-snapshots=all` when the change is one you
+expect to be small: the bare flag only rewrites a shot whose comparison _fails_, and the budget
+that keeps the arcs stable from run to run (2% of the pixels — about 7,500 on a phone) is wider
+than most text changes, so a real change can compare equal and leave the picture on disk showing
+a layout the app no longer has. That has happened here.
+
+```sh
+npm run test:visual -- --update-snapshots=all
+```
+
+### Looking at a before and after
+
+A passing run has nothing to show: Playwright writes `-expected.png`, `-actual.png` and
+`-diff.png` only where a comparison _fails_. So to see what changed, put the old baselines back
+and let the suite fail against them.
+
+```sh
+git switch -c visual-review && git add -A && git commit -m "wip"   # the safety net
+git checkout HEAD~1 -- tests/e2e/visual.spec.ts-snapshots          # the old pictures
+npm run test:visual                                                # fails where it changed
+npm run test:report                                                # the viewer
+git checkout HEAD -- tests/e2e/visual.spec.ts-snapshots            # the new ones back
+```
+
+The report shows each failure as **Diff / Actual / Expected**, with a side-by-side and a slider.
+Commit first rather than stashing the snapshots: a failing run re-creates any baseline that is
+missing, which makes `git stash pop` conflict on every picture that is new in this change.
+
+A pull request is the other way, and needs none of this — GitHub's image diff gives swipe and
+onion-skin on every changed PNG. What it does not give is the computed diff mask, which is the
+one thing the Playwright viewer is better at. To make baselines that CI could share, draw them inside the
 same container CI uses:
 
 ```sh
