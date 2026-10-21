@@ -1,3 +1,4 @@
+import { slBooks } from '../../i18n/books/sl.ts';
 import { SLOVENIAN_BOOK_ABBREVIATIONS } from '../../locales/sl/book-abbreviations.ts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SLOVENIAN_BOOKS } from '../../locales/sl/books.ts';
@@ -37,15 +38,15 @@ describe('Slovenian book labels', () => {
     ['Prva knjiga Kraljev 1:1', '1Kgs'],
     ['John 3:16', 'John'],
   ])('parses %s without changing canonical references', (input, book) => {
-    const result = parseReference(input, CANONICAL_VERSIFICATION);
+    const result = parseReference(input, CANONICAL_VERSIFICATION, slBooks);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.reference.book).toBe(book);
   });
   it('localizes displayed references while keeping OSIS URLs unchanged', () => {
     vi.stubGlobal('location', { search: '?t=chr1914-sl' });
-    expect(formatVerseRef({ book: 'Gen', chapter: 1, verse: 1 })).toBe('1. Mojzesova 1:1');
+    expect(formatVerseRef({ book: 'Gen', chapter: 1, verse: 1 }, slBooks)).toBe('1. Mojzesova 1:1');
     const passage = { kind: 'chapter', book: 'John', chapter: 3 } as const;
-    expect(formatPassage(passage, CANONICAL_VERSIFICATION)).toBe('Janez 3');
+    expect(formatPassage(passage, CANONICAL_VERSIFICATION, slBooks)).toBe('Janez 3');
     expect(toPassageOsisId(passage, CANONICAL_VERSIFICATION)).toBe('John.3');
   });
 });
@@ -56,7 +57,7 @@ it.each(
     aliases.map((alias) => [alias, book]),
   ),
 )('resolves the supplied alias %s to %s', (alias, book) => {
-  const result = parseReference(`${alias} 1:1`, CANONICAL_VERSIFICATION);
+  const result = parseReference(`${alias} 1:1`, CANONICAL_VERSIFICATION, slBooks);
   expect(result.ok).toBe(true);
   if (result.ok) expect(result.reference.book).toBe(book);
 });

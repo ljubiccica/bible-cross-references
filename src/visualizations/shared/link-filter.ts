@@ -1,4 +1,3 @@
-import { t } from '../../locales/ui.ts';
 import { GENRES, type GenreId } from '../../core/bible/genres.ts';
 import type { VerseIndex } from '../../core/bible/verse-ref.ts';
 import { elementAt } from '../../core/lib/array.ts';
@@ -31,13 +30,16 @@ export function isDefaultFilter(filter: LinkFilter, defaults: LinkFilter): boole
   return filter.minVotes === defaults.minVotes && filter.hiddenGenres.size === 0;
 }
 
-export function describeThreshold(minVotes: number): string {
+export type ThresholdDescription =
+  | { readonly kind: 'all' }
+  | { readonly kind: 'no-downvoted' }
+  | { readonly kind: 'at-least'; readonly votes: number };
+
+export function describeThreshold(minVotes: number): ThresholdDescription {
   if (minVotes === -Infinity) {
-    return t('all links');
+    return { kind: 'all' };
   }
-  return minVotes === 0
-    ? t('links voted down are hidden')
-    : t('≥ {count} votes', { count: minVotes });
+  return minVotes === 0 ? { kind: 'no-downvoted' } : { kind: 'at-least', votes: minVotes };
 }
 
 /**

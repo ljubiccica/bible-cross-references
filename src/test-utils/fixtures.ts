@@ -34,6 +34,8 @@ export function createTranslationFile(
     provenance: PROVENANCE,
     notices: [],
     translationId: 'bsb',
+    license: { name: 'Public domain', url: 'https://berean.bible/terms.htm', publicDomain: true },
+    attribution: 'Scripture text: Berean Standard Bible (BSB), dedicated to the public domain.',
     verses: Array.from(
       { length: CANONICAL_VERSIFICATION.verseCount },
       (_, index) => overrides.get(index) ?? `Verse number ${index}.`,

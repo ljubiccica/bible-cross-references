@@ -1,5 +1,4 @@
-import { t } from '../../../locales/ui.ts';
-import { formatInteger } from '../../../shared/lib/format.ts';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import { FiltersIcon, ResetIcon } from '../../../shared/ui/icons.tsx';
 import {
   describeThreshold,
@@ -19,11 +18,6 @@ interface FiltersMenuProps {
   readonly totalLinks: number;
 }
 
-/** Short option labels: the minimum is included, hence ≥ (e.g. "≥ 4" keeps links with 4 votes). */
-function thresholdLabel(minVotes: number): string {
-  return minVotes === -Infinity ? t('All') : `≥ ${String(minVotes)}`;
-}
-
 /** Low-key link filters: a button that opens a small popover. */
 export function FiltersMenu({
   filter,
@@ -32,11 +26,29 @@ export function FiltersMenu({
   shownLinks,
   totalLinks,
 }: FiltersMenuProps) {
+  const { t, n } = useLocalization();
   const isDefault = isDefaultFilter(filter, defaults);
+  // The minimum is included, hence ≥ (e.g. "≥ 4" keeps links with 4 votes).
+  const threshold = describeThreshold(filter.minVotes);
+  const thresholdText =
+    threshold.kind === 'all'
+      ? t('filter.allLinks')
+      : threshold.kind === 'no-downvoted'
+        ? t('filter.noDownvoted')
+        : t('filter.atLeastVotes')(n(threshold.votes), threshold.votes);
+  const thresholdLabel = (minVotes: number) =>
+    minVotes === -Infinity
+      ? t('menu.filters.votes.all')
+      : t('menu.filters.votes.atLeast')(minVotes);
   return (
-    <MenuButton label={t('Filters')} icon={FiltersIcon} indicator={!isDefault}>
+    <MenuButton
+      label={t('menu.filters')}
+      changedLabel={t('menu.filtersChanged')}
+      icon={FiltersIcon}
+      indicator={!isDefault}
+    >
       <label className={styles.field}>
-        {t('Community votes')}
+        {t('menu.filters.votes')}
         <select
           className={styles.select}
           value={String(filter.minVotes)}
@@ -52,20 +64,16 @@ export function FiltersMenu({
         </select>
       </label>
       <p className={styles.hint}>
-        {t(
-          'Votes rank how helpful OpenBible.info readers found a link; they don’t prove it right or wrong.',
-        )}{' '}
-        {t('Showing {shown} of {total} links ({threshold}{hidden}).', {
-          shown: formatInteger(shownLinks),
-          total: formatInteger(totalLinks),
-          threshold: describeThreshold(filter.minVotes),
-          hidden:
-            filter.hiddenGenres.size > 0
-              ? ', ' + t('{count} genres hidden', { count: filter.hiddenGenres.size })
-              : '',
-        })}
+        {t('menu.filters.note')(
+          n(shownLinks),
+          n(totalLinks),
+          thresholdText,
+          filter.hiddenGenres.size > 0
+            ? t('menu.filters.hiddenGenres')(filter.hiddenGenres.size)
+            : '',
+        )}
       </p>
-      <p className={styles.hint}>{t('Tip: tap a genre in the legend to hide or show it.')}</p>
+      <p className={styles.hint}>{t('menu.filters.tip')}</p>
       <button
         type="button"
         className={styles.button}
@@ -75,7 +83,7 @@ export function FiltersMenu({
         }}
       >
         <ResetIcon />
-        {t('Reset filters')}
+        {t('menu.filters.reset')}
       </button>
     </MenuButton>
   );

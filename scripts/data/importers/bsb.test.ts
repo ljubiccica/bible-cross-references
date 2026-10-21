@@ -83,3 +83,24 @@ describe('importBsbText', () => {
     expect(() => importBsbText(text, PROVENANCE)).toThrow('25 verses are missing, e.g. Jude.1.1');
   });
 });
+
+/**
+ * `omittedVerseNotices` being covered on its own proves the function works, not that anything
+ * calls it. It is the check that would have stopped the Reina Valera 1909 — a text with every
+ * verse key present and its words one verse out — so the wiring is worth a test in each
+ * importer that is supposed to have it.
+ */
+describe('the blank-verse guard, through this importer', () => {
+  const withBlank = (reference: string) =>
+    createBsbText((line) => (line.startsWith(`${reference}\t`) ? `${reference}\t` : line));
+
+  it('accepts a verse the earliest manuscripts omit', () => {
+    const file = importBsbText(withBlank('Matthew 17:21'), PROVENANCE);
+    expect(file.verses[verseIndex('Matt', 17, 21)]).toBe('');
+    expect(file.notices[0]).toMatchObject({ count: 1, examples: ['Matt.17.21'] });
+  });
+
+  it('refuses one they do not', () => {
+    expect(() => importBsbText(withBlank('Genesis 32:1'), PROVENANCE)).toThrow(/Gen\.32\.1/);
+  });
+});

@@ -1,5 +1,6 @@
 import type { JSXElementConstructor, ReactNode } from 'react';
 import type { Passage } from '../core/bible/passage.ts';
+import type { MessageKey } from '../i18n/messages/types.ts';
 import type { IconComponent } from '../shared/ui/icons.tsx';
 import type { LinkFilter } from './shared/link-filter.ts';
 import type { VizData } from './shared/viz-data.ts';
@@ -40,12 +41,13 @@ export interface VisualizationProps {
  */
 export interface Visualization {
   readonly id: string;
-  readonly title: string;
+  /** Message keys rather than words: the switch is read in the reader's own language. */
+  readonly titleKey: MessageKey;
   /** Shown instead of the title on phones. */
-  readonly shortTitle: string;
+  readonly shortTitleKey: MessageKey;
   readonly icon: IconComponent;
   /** Invites a reader into this visualization from another one, e.g. "Read in context". */
-  readonly openLabel: string;
+  readonly openLabelKey: MessageKey;
   /** Usually lazy, so each visualization's code (e.g. Three.js) is a chunk of its own. */
   readonly Component: JSXElementConstructor<VisualizationProps>;
 }

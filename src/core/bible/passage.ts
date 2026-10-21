@@ -1,8 +1,9 @@
-import { getDisplayReferenceName } from './book-labels.ts';
-import { getBook, isBookId, type BookId } from './books.ts';
+import { isBookId, type BookId } from './books.ts';
 import type { ParsedReference } from './reference-parse.ts';
 import { toOsisId, parseOsisId, type VerseIndex } from './verse-ref.ts';
 import type { VerseIndexRange, Versification } from './versification.ts';
+import { bookReferenceName } from './reference-format.ts';
+import type { BookNames } from '../../i18n/books/types.ts';
 
 /** What a reader is looking at: a single verse or a whole chapter. */
 export type Passage =
@@ -43,13 +44,17 @@ export function isSamePassage(a: Passage | null, b: Passage | null): boolean {
   return a.book === b.book && a.chapter === b.chapter;
 }
 
-/** Formats a passage for display, e.g. `Isaiah 53` or `Isaiah 53:5`. */
-export function formatPassage(passage: Passage, versification: Versification): string {
+/** Formats a passage for display, e.g. `Isaiah 53`, `Isaiah 53:5`, `Isaías 53:5`. */
+export function formatPassage(
+  passage: Passage,
+  versification: Versification,
+  names: BookNames,
+): string {
   if (passage.kind === 'verse') {
     const ref = versification.refAt(passage.verse);
-    return `${getDisplayReferenceName(getBook(ref.book))} ${ref.chapter}:${ref.verse}`;
+    return `${bookReferenceName(ref.book, names)} ${String(ref.chapter)}:${String(ref.verse)}`;
   }
-  return `${getDisplayReferenceName(getBook(passage.book))} ${passage.chapter}`;
+  return `${bookReferenceName(passage.book, names)} ${String(passage.chapter)}`;
 }
 
 /** Formats a passage as an OSIS ID, e.g. `Isa.53` or `Isa.53.5`. */

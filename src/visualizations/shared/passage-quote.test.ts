@@ -4,6 +4,7 @@ import { verseIndex, createTranslationFile } from '../../test-utils/fixtures.ts'
 import { getTranslationManifest } from '../../translations/registry.ts';
 import { Translation } from '../../translations/translation.ts';
 import { quotePassage } from './passage-quote.ts';
+import { enBooks } from '../../i18n/books/en.ts';
 
 const GEN_1_31 = verseIndex('Gen', 1, 31);
 const GEN_2_1 = verseIndex('Gen', 2, 1);
@@ -24,7 +25,14 @@ const translation = new Translation(
   ),
 );
 const quote = (start: number, end: number) =>
-  quotePassage({ translation, versification: CANONICAL_VERSIFICATION, start, end, url: URL });
+  quotePassage({
+    translation,
+    versification: CANONICAL_VERSIFICATION,
+    names: enBooks,
+    start,
+    end,
+    url: URL,
+  });
 
 describe('quotePassage', () => {
   it('quotes a verse with its reference, translation and link', () => {
@@ -63,6 +71,7 @@ it('keeps an unresolved Slovenian slot visibly marked in copied quotations', () 
   expect(
     quotePassage({
       translation: draft,
+      names: enBooks,
       versification: CANONICAL_VERSIFICATION,
       start: MATT_17_21,
       end: MATT_17_21,

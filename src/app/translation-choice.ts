@@ -1,8 +1,12 @@
 import { useCallback } from 'react';
-import { translationIdFromParams } from '../translations/selection.ts';
 import { isTranslationId, type TranslationId } from '../core/datasets/ids.ts';
+import { TRANSLATION_PARAM, translationFromParams } from './initial-choice.ts';
+import { TRANSLATION_PREFERENCE } from '../shared/lib/preference-keys.ts';
 import { readPreference, useStringPreference } from '../shared/lib/preferences.ts';
-import { DEFAULT_TRANSLATION_ID } from '../translations/registry.ts';
+import type { LocaleId } from '../i18n/locale-id.ts';
+import { defaultTranslationFor } from '../translations/default-for-locale.ts';
+
+export { defaultTranslationFor };
 
 /**
  * Which translation to show. The URL decides, so a shared link reads the way its author read it;
@@ -10,35 +14,32 @@ import { DEFAULT_TRANSLATION_ID } from '../translations/registry.ts';
  */
 
 /** URL query parameter holding the translation (`?t=kjv`). */
-export const TRANSLATION_PARAM = 't';
+export { TRANSLATION_PARAM, translationFromParams };
 
 /** Key of the stored choice, remembered between visits. */
-const PREFERENCE_KEY = 'translation';
-
-/** The translation a URL names, or `null` if it names none the app knows. */
-export function translationFromParams(params: URLSearchParams): TranslationId | null {
-  return translationIdFromParams(params);
-}
+const PREFERENCE_KEY = TRANSLATION_PREFERENCE;
 
 /** The reader's last choice, outside React (the app starts its download before it renders). */
-export function readPreferredTranslation(): TranslationId {
+export function readPreferredTranslation(localeId: LocaleId): TranslationId {
   const stored = readPreference(PREFERENCE_KEY);
-  return stored !== null && isTranslationId(stored) ? stored : DEFAULT_TRANSLATION_ID;
+  return stored !== null && isTranslationId(stored) ? stored : defaultTranslationFor(localeId);
 }
 
 /** The same choice, as a preference that lasts between visits. */
-export function useTranslationPreference(): readonly [TranslationId, (id: TranslationId) => void] {
-  const [stored, store] = useStringPreference(PREFERENCE_KEY, DEFAULT_TRANSLATION_ID);
+export function useTranslationPreference(
+  localeId: LocaleId,
+): readonly [TranslationId, (id: TranslationId) => void] {
+  const [stored, store] = useStringPreference(PREFERENCE_KEY, defaultTranslationFor(localeId));
   const set = useCallback(
     (id: TranslationId) => {
       store(id);
     },
     [store],
   );
-  return [isTranslationId(stored) ? stored : DEFAULT_TRANSLATION_ID, set];
+  return [isTranslationId(stored) ? stored : defaultTranslationFor(localeId), set];
 }
 
 /** What the app shows on arrival: the URL's translation, else the reader's, else the default. */
-export function initialTranslationId(url: URL): TranslationId {
-  return translationFromParams(url.searchParams) ?? readPreferredTranslation();
+export function initialTranslationId(url: URL, localeId: LocaleId): TranslationId {
+  return translationFromParams(url.searchParams) ?? readPreferredTranslation(localeId);
 }

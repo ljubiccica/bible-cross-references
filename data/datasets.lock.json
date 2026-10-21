@@ -1,0 +1,96 @@
+{
+  "data/cross-references/openbible.json": {
+    "sha256": "0131880bb30d6d902080e9c3c4a78352b845c57fa360bf7c1e979e463967fb68",
+    "bytes": 4919573,
+    "shape": {
+      "links": 344799,
+      "sourceRows": 344799
+    }
+  },
+  "data/translations/blivre.json": {
+    "sha256": "18dfa294fa4c9ca4800b598fbf0174cada6b5cabf5a605ed07b6e48184bde546",
+    "bytes": 3967518,
+    "shape": {
+      "characters": 3775995,
+      "digits": 0,
+      "empty": 0,
+      "supplied": 4838,
+      "verses": 31102
+    }
+  },
+  "data/translations/bsb.json": {
+    "sha256": "2deab61ecfdf859578e2026dfd3133fe5156e7ef092aec1d40e9ac444825fd5a",
+    "bytes": 3946378,
+    "shape": {
+      "characters": 3812012,
+      "digits": 499,
+      "empty": 16,
+      "supplied": 0,
+      "verses": 31102
+    }
+  },
+  "data/translations/chr1914-sl.json": {
+    "sha256": "4212efaf8aeaa8f024ccb905f0b2ebd4d0a0605b82795515b2c1f25bcadc4f35",
+    "bytes": 3659381,
+    "shape": {
+      "characters": 3486051,
+      "digits": 0,
+      "empty": 0,
+      "supplied": 42,
+      "verses": 31102
+    }
+  },
+  "data/translations/kjv.json": {
+    "sha256": "23046fa73190698708f6f8b9aaaaa8a3de6e97245d66ac9df72e5902161d9527",
+    "bytes": 4253974,
+    "shape": {
+      "characters": 4155835,
+      "digits": 0,
+      "empty": 0,
+      "supplied": 14241,
+      "verses": 31102
+    }
+  },
+  "data/translations/luther1912.json": {
+    "sha256": "c868829a22d0a18b28b2f088bc505738eb93afb6f7b5b595069a351dfe3b091a",
+    "bytes": 4155530,
+    "shape": {
+      "characters": 4002044,
+      "digits": 1,
+      "empty": 0,
+      "supplied": 0,
+      "verses": 31102
+    }
+  },
+  "data/translations/riveduta1927.json": {
+    "sha256": "7566e1c0f8bb56e898e214ae2e4874c68ede83bb68e33732cff95d69ff36c4e3",
+    "bytes": 4247719,
+    "shape": {
+      "characters": 4025518,
+      "digits": 2,
+      "empty": 0,
+      "supplied": 0,
+      "verses": 31102
+    }
+  },
+  "data/translations/vbl.json": {
+    "sha256": "c8317a7eb2bc1343d091e71e91a798a54de932a1f29da642ae6c6da4f2b7d41c",
+    "bytes": 4259104,
+    "shape": {
+      "characters": 4029049,
+      "digits": 507,
+      "empty": 16,
+      "supplied": 0,
+      "verses": 31102
+    }
+  },
+  "data/words/stepbible.json": {
+    "sha256": "f372b62acc700a5a62c621888500dcf1d7f7e244f17f9bee43cb3199c56d2e43",
+    "bytes": 1585580,
+    "shape": {
+      "maxVerses": 100,
+      "verseEntries": 124791,
+      "words": 16384
+    }
+  }
+}

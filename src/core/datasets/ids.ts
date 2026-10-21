@@ -5,7 +5,15 @@
  * dataset has, for example, both a data-pipeline importer and a runtime manifest.
  */
 
-export const TRANSLATION_IDS = ['bsb', 'kjv', 'chr1914-sl'] as const;
+export const TRANSLATION_IDS = [
+  'bsb',
+  'kjv',
+  'blivre',
+  'luther1912',
+  'riveduta1927',
+  'vbl',
+  'chr1914-sl',
+] as const;
 export type TranslationId = (typeof TRANSLATION_IDS)[number];
 
 export const CROSS_REFERENCE_SOURCE_IDS = ['openbible'] as const;

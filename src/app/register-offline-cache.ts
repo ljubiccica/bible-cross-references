@@ -30,3 +30,22 @@ export function registerOfflineCache(datasets: readonly string[] = []): void {
       console.warn('The offline cache is unavailable:', error);
     });
 }
+
+/**
+ * Asks the worker to keep these datasets, for a reader who will want them offline later.
+ *
+ * Changing the interface language can change which Bible the app shows, and the installed app
+ * opens at `start_url` with no query — so a reader who switches language online, then opens the
+ * app offline, would arrive at a translation nothing had ever downloaded. This is what stops
+ * that being a dead screen.
+ */
+export function cacheDatasets(paths: readonly string[]): void {
+  if (!import.meta.env.PROD || !('serviceWorker' in navigator) || paths.length === 0) {
+    return;
+  }
+  navigator.serviceWorker.ready
+    .then((ready) => {
+      ready.active?.postMessage({ type: 'cache-datasets', paths });
+    })
+    .catch(() => undefined);
+}

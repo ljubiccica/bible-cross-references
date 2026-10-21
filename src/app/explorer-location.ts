@@ -8,6 +8,10 @@ import {
   VOTE_THRESHOLDS,
   type LinkFilter,
 } from '../visualizations/shared/link-filter.ts';
+import { LOCALE_PARAM, localeFromParams } from '../i18n/locale-choice.ts';
+import type { LocaleId } from '../i18n/locale-id.ts';
+import { localePathSegment, splitLocalePath } from '../i18n/locale-path.ts';
+import { DEFAULT_LOCALE_ID } from '../i18n/registry.ts';
 import { translationFromParams, TRANSLATION_PARAM } from './translation-choice.ts';
 
 /** URL query parameter holding the focused passage as an OSIS ID (`?ref=John.3.16`, `?ref=Isa.53`). */
@@ -30,6 +34,12 @@ export interface ExplorerLocation<Id extends string> {
   readonly passage: Passage | null;
   readonly filter: LinkFilter;
   readonly translation: TranslationId;
+  /**
+   * The language the interface speaks. A link naming one reads as its author read it; a link
+   * naming none reads in the recipient's own language, which is the case for English authors,
+   * since `?lang=en` is left out to keep a plain link plain.
+   */
+  readonly locale: LocaleId;
 }
 
 /** Unknown thresholds and genres fall back to the defaults. */
@@ -55,24 +65,38 @@ function normalizePath(path: string): string {
 /**
  * Reads the view, the passage, the filter and the translation from a URL. Unknown paths show the
  * home view (the first route), an unknown passage shows none, and unknown filter values keep the
- * defaults. A URL naming no translation (or one the app does not have) shows `defaultTranslation`,
- * which is the reader's own choice from an earlier visit.
+ * defaults.
+ *
+ * `defaultTranslation` is a function of the language rather than a value, because the two are not
+ * independent: a reader who has never chosen a translation should get the one that matches the
+ * language they are reading in. Resolving the language first and asking for its translation
+ * afterwards is what keeps the two in step — ask a store instead and a URL reached by pressing
+ * Back can answer with last page's language, which is how a `?lang=pt` entry ended up showing the
+ * Portuguese interface over the English Bible.
  */
 export function parseExplorerUrl<Id extends string>(
   url: URL,
   base: string,
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
-  defaultTranslation: TranslationId,
+  defaultTranslation: (locale: LocaleId) => TranslationId,
+  defaultLocale: LocaleId,
 ): ExplorerLocation<Id> {
-  const path = url.pathname.startsWith(base) ? normalizePath(url.pathname.slice(base.length)) : '';
+  const { locale: pathLocale, rest } = splitLocalePath(url.pathname, base);
+  const path = normalizePath(rest);
   const route = routes.find((candidate) => candidate.path === path) ?? routes[0];
   const id = url.searchParams.get(PASSAGE_PARAM);
+  // The path wins over `?lang=`, because the file served at that path is already in that
+  // language: its title, its description and its `lang` were decided before the app ran, and a
+  // query parameter cannot change any of them. Nothing that was ever shared is affected — no
+  // link predates the language paths, so no saved link carries one.
+  const locale = pathLocale ?? localeFromParams(url.searchParams) ?? defaultLocale;
   return {
     view: route.id,
     passage: id === null ? null : (parsePassageOsisId(id, versification) ?? null),
     filter: parseFilter(url.searchParams),
-    translation: translationFromParams(url.searchParams) ?? defaultTranslation,
+    translation: translationFromParams(url.searchParams) ?? defaultTranslation(locale),
+    locale,
   };
 }
 
@@ -86,6 +110,19 @@ export function plainTranslationFor(preferred: TranslationId): TranslationId | n
 }
 
 /**
+ * The language a URL need not name for this reader, on the same reasoning as the translation
+ * above: a URL naming none is read in the reader's own language, so the only language safe to
+ * leave out is the one they would land on anyway.
+ *
+ * Without this, an address that explicitly says `?lang=en` loses it the first time the app
+ * rebuilds the URL — and the next read fills the gap from the reader's own preference instead,
+ * so a Portuguese reader following an English link is quietly moved back to Portuguese.
+ */
+export function plainLocaleFor(preferred: LocaleId): LocaleId | null {
+  return preferred === DEFAULT_LOCALE_ID ? DEFAULT_LOCALE_ID : null;
+}
+
+/**
  * The URL (path and query, without the origin) that shows a passage in a view with a filter.
  * Defaults are left out, so a plain link stays plain.
  */
@@ -95,7 +132,8 @@ export function explorerUrl(
     passage,
     filter,
     translation,
-  }: Pick<ExplorerLocation<string>, 'passage' | 'filter' | 'translation'>,
+    locale,
+  }: Pick<ExplorerLocation<string>, 'passage' | 'filter' | 'translation' | 'locale'>,
   base: string,
   versification: Versification,
   /**
@@ -104,13 +142,22 @@ export function explorerUrl(
    * a link meant for someone else needs — their choice must not quietly replace its text.
    */
   omitTranslation: TranslationId | null = DEFAULT_TRANSLATION_ID,
+  /** The language the URL need not name, for the same reason. See `plainLocaleFor`. */
+  omitLocale: LocaleId | null = DEFAULT_LOCALE_ID,
 ): string {
+  // A language other than the default lives in the path, so the query need not repeat it. The
+  // default language has no segment of its own and keeps naming itself in the query where it has
+  // to — see `plainLocaleFor`.
+  const localeSegment = localePathSegment(locale);
   const params = new URLSearchParams();
   if (passage !== null) {
     params.set(PASSAGE_PARAM, toPassageOsisId(passage, versification));
   }
   if (translation !== omitTranslation) {
     params.set(TRANSLATION_PARAM, translation);
+  }
+  if (localeSegment === '' && locale !== omitLocale) {
+    params.set(LOCALE_PARAM, locale);
   }
   if (filter.minVotes !== DEFAULT_LINK_FILTER.minVotes) {
     params.set(VOTES_PARAM, filter.minVotes === -Infinity ? 'all' : String(filter.minVotes));
@@ -121,5 +168,47 @@ export function explorerUrl(
   }
   // Commas are fine in a query and far more readable than %2C.
   const query = params.toString().replaceAll('%2C', ',');
-  return `${base}${route.path}${query === '' ? '' : `?${query}`}`;
+  return `${base}${localeSegment}${route.path}${query === '' ? '' : `?${query}`}`;
+}
+
+/**
+ * The same address with the language moved out of the query and into the path, or `null` where
+ * there is nothing to move.
+ *
+ * Links shared before the language paths existed name their language as `?lang=pt`, and they go
+ * on working exactly as they did. This quietly rewrites one in the address bar on arrival, so
+ * that the link the reader then copies, or the one their browser bookmarks, is the shape that
+ * previews in Portuguese when it is shared on. The rewrite itself moves one parameter and
+ * touches nothing else, `utm_` tags and the fragment included — though the first navigation the
+ * reader makes afterwards rebuilds the query from the app's own state, as it always has, and
+ * drops anything the app does not own.
+ */
+export function localeUpgradeUrl<Id extends string>(
+  url: URL,
+  base: string,
+  routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
+): string | null {
+  // Only ever rewrite an address this app actually serves. Without this the rewrite happily
+  // invented paths out of whatever it was given — a link from another deployment became this
+  // one's home page, a doubled slash became a URL that 404s, and `/base/en/` became `/base/pt/en/`.
+  if (!url.pathname.startsWith(base)) {
+    return null;
+  }
+  const { locale: pathLocale, rest } = splitLocalePath(url.pathname, base);
+  if (pathLocale !== null) {
+    return null;
+  }
+  const path = normalizePath(rest);
+  if (!routes.some((candidate) => candidate.path === path)) {
+    return null;
+  }
+  const locale = localeFromParams(url.searchParams);
+  const segment = locale === null ? '' : localePathSegment(locale);
+  if (segment === '') {
+    return null;
+  }
+  const params = new URLSearchParams(url.searchParams);
+  params.delete(LOCALE_PARAM);
+  const query = params.toString().replaceAll('%2C', ',');
+  return `${base}${segment}${path}${query === '' ? '' : `?${query}`}${url.hash}`;
 }

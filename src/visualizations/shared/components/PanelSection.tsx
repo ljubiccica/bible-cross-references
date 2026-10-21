@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { formatInteger } from '../../../shared/lib/format.ts';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import { useBooleanPreference } from '../../../shared/lib/preferences.ts';
 import { ExpandIcon, type IconComponent } from '../../../shared/ui/icons.tsx';
 import styles from './PassagePanel.module.css';
@@ -35,13 +35,15 @@ export function PanelSection({
   /** Shown at the end of the band; omit where a count would mean nothing. */
   readonly count?: number;
   /** What the count counts, for a reader who cannot see the section, e.g. "passages". */
-  readonly countLabel?: string;
+  /** What the count counts, inflected for it: `1 passage`, `23 passages`. */
+  readonly countLabel?: (plural: number) => string;
   /** Anything between the name and the count, e.g. the genre strip. */
   readonly trailing?: ReactNode;
   /** Whether the section starts open, before the reader has said otherwise. */
   readonly defaultOpen?: boolean;
   readonly children: ReactNode;
 }) {
+  const { t, n } = useLocalization();
   const [open, setOpen] = useBooleanPreference(`panel:${id}`, defaultOpen);
   const bodyId = useId();
   return (
@@ -62,8 +64,11 @@ export function PanelSection({
           {trailing}
           {count !== undefined && (
             <span className={styles.count}>
-              {formatInteger(count)}
-              <span className={styles.visuallyHidden}> {countLabel ?? 'items'}</span>
+              {n(count)}
+              <span className={styles.visuallyHidden}>
+                {' '}
+                {(countLabel ?? t('panel.items'))(count)}
+              </span>
             </span>
           )}
           <ExpandIcon className={styles.chevron} />

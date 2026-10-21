@@ -22,7 +22,14 @@ const JOHN_3_16 = versePassage(kjv.indexOf({ book: 'John', chapter: 3, verse: 16
 const ISAIAH_53: Passage = { kind: 'chapter', book: 'Isa', chapter: 53 };
 
 function parse(url: string, base = '/', preferred = DEFAULT_TRANSLATION_ID) {
-  return parseExplorerUrl(new URL(url, 'https://example.org'), base, ROUTES, kjv, preferred);
+  return parseExplorerUrl(
+    new URL(url, 'https://example.org'),
+    base,
+    ROUTES,
+    kjv,
+    () => preferred,
+    'en',
+  );
 }
 
 /** A location's view and passage, for tests that don't look at the filter. */
@@ -95,7 +102,8 @@ describe('explorerUrl', () => {
       passage: null,
       filter: DEFAULT_LINK_FILTER,
       translation: DEFAULT_TRANSLATION_ID,
-    };
+      locale: 'en',
+    } as const;
     expect(explorerUrl(ROUTES[0], plain, '/', kjv)).toBe('/');
     expect(
       explorerUrl(ROUTES[1], { ...plain, passage: JOHN_3_16 }, '/bible-cross-references/', kjv),
@@ -105,14 +113,24 @@ describe('explorerUrl', () => {
   it('adds the filter only when it differs from the default, genres in canonical order', () => {
     const url = explorerUrl(
       ROUTES[0],
-      { passage: ISAIAH_53, filter: HIDE_LAW_AND_HISTORY, translation: DEFAULT_TRANSLATION_ID },
+      {
+        passage: ISAIAH_53,
+        filter: HIDE_LAW_AND_HISTORY,
+        translation: DEFAULT_TRANSLATION_ID,
+        locale: 'en',
+      },
       '/',
       kjv,
     );
     expect(url).toBe('/?ref=Isa.53&votes=10&hide=law,history');
     const all = explorerUrl(
       ROUTES[0],
-      { passage: null, filter: createLinkFilter(-Infinity), translation: DEFAULT_TRANSLATION_ID },
+      {
+        passage: null,
+        filter: createLinkFilter(-Infinity),
+        translation: DEFAULT_TRANSLATION_ID,
+        locale: 'en',
+      },
       '/',
       kjv,
     );
@@ -120,7 +138,7 @@ describe('explorerUrl', () => {
   });
 
   it('names the translation unless it is the default, so a shared link keeps it', () => {
-    const passage = { passage: JOHN_3_16, filter: DEFAULT_LINK_FILTER };
+    const passage = { passage: JOHN_3_16, filter: DEFAULT_LINK_FILTER, locale: 'en' } as const;
     expect(explorerUrl(ROUTES[0], { ...passage, translation: 'bsb' }, '/', kjv)).toBe(
       '/?ref=John.3.16',
     );
@@ -138,7 +156,8 @@ describe('explorerUrl', () => {
       passage: JOHN_3_16,
       filter: DEFAULT_LINK_FILTER,
       translation: DEFAULT_TRANSLATION_ID,
-    };
+      locale: 'en',
+    } as const;
     // A quote of the default translation has to open in it, whatever its reader usually reads.
     expect(explorerUrl(ROUTES[0], quoted, '/', kjv, null)).toBe('/?ref=John.3.16&t=bsb');
     expect(parse('/?ref=John.3.16&t=bsb', '/', 'kjv').translation).toBe('bsb');
@@ -151,6 +170,7 @@ describe('explorerUrl', () => {
       passage: JOHN_3_16,
       filter: DEFAULT_LINK_FILTER,
       translation: 'bsb',
+      locale: 'en',
     } as const;
     const url = explorerUrl(ROUTES[0], reading, '/', kjv, plainTranslationFor('kjv'));
     expect(url).toBe('/?ref=John.3.16&t=bsb');
@@ -165,7 +185,8 @@ describe('explorerUrl', () => {
       passage: ISAIAH_53,
       filter: HIDE_LAW_AND_HISTORY,
       translation: DEFAULT_TRANSLATION_ID,
-    };
+      locale: 'en',
+    } as const;
     expect(parse(explorerUrl(ROUTES[1], location, '/', kjv))).toEqual({
       view: 'threads',
       ...location,
@@ -179,7 +200,12 @@ it('preserves the selected draft when navigating to another chapter', () => {
     expect(
       explorerUrl(
         ROUTES[1],
-        { passage: ISAIAH_53, filter: DEFAULT_LINK_FILTER, translation: 'chr1914-sl' },
+        {
+          passage: ISAIAH_53,
+          filter: DEFAULT_LINK_FILTER,
+          locale: 'en',
+          translation: 'chr1914-sl',
+        },
         '/',
         kjv,
       ),

@@ -1,8 +1,6 @@
-import { formatInteger } from '../../../shared/lib/format.ts';
-import { t, uiLanguage } from '../../../locales/ui.ts';
-import { useEffect, type ReactNode } from 'react';
-import { selectedTranslation } from '../../../translations/selection.ts';
+import type { ReactNode } from 'react';
 import { SiteFooter } from '../../../shared/ui/SiteFooter.tsx';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import { useBottomSheet } from '../use-bottom-sheet.ts';
 import styles from './VizPage.module.css';
 
@@ -31,10 +29,7 @@ export function VizPage({
   credits,
   children,
 }: VizPageProps) {
-  const translation = selectedTranslation();
-  useEffect(() => {
-    document.documentElement.lang = uiLanguage();
-  }, [translation.language]);
+  const { t } = useLocalization();
   const hasPanel = panel !== undefined && panel !== null && panel !== false;
   const { expanded, setExpanded, containerRef, sheetRef, spaceRef, scrimRef } = useBottomSheet(
     hasPanel,
@@ -45,17 +40,6 @@ export function VizPage({
       <header className={styles.header}>
         <div className={styles.masthead}>{masthead}</div>
         <div className={styles.controls}>{controls}</div>
-        {translation.previewNotice && (
-          <p role="status" style={{ margin: '0.5rem 1rem', fontSize: '0.85rem' }}>
-            {t(
-              'Slovenian draft · {available} of {total} verses available. Unresolved verses are marked. Text is still being reviewed.',
-              {
-                available: formatInteger(translation.previewVerseCount ?? 0),
-                total: formatInteger(31102),
-              },
-            )}
-          </p>
-        )}
       </header>
       <div
         ref={containerRef}
@@ -75,11 +59,11 @@ export function VizPage({
                 setExpanded(false);
               }}
             />
-            <aside ref={sheetRef} className={styles.panel} aria-label={t('Details')}>
+            <aside ref={sheetRef} className={styles.panel} aria-label={t('panel.details')}>
               <button
                 type="button"
                 className={styles.sheetHandle}
-                aria-label={expanded ? t('Collapse details') : t('Expand details')}
+                aria-label={expanded ? t('panel.collapse') : t('panel.expand')}
                 aria-expanded={expanded}
                 onClick={() => {
                   setExpanded(!expanded);

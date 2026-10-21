@@ -20,6 +20,7 @@ import { importEbibleVerseLines } from './importers/ebible-vpl.ts';
 import { importOpenBibleCrossReferences } from './importers/openbible.ts';
 import { getWordSourceManifest } from '../../src/words/registry.ts';
 import { importStepBibleWords, type TaggedLanguage } from './importers/stepbible.ts';
+import { expectMember } from './lib/sources.ts';
 import { extractZipTextEntry } from './lib/files.ts';
 import type { RawSource } from './lib/sources.ts';
 
@@ -43,18 +44,36 @@ function provenanceOf({ url, sha256, retrievedAt }: RawSource) {
   return { url, sha256, retrievedAt };
 }
 
+/**
+ * A translation published by eBible.org as a verse-per-line archive, which is most of them.
+ *
+ * The entry to read comes from the pin rather than being repeated here: naming a different one
+ * would mean the digest guarded a file the build never reads, and the scripture would ship
+ * unverified with nothing to say so.
+ *
+ * `snapshotDate` is null for all of these. eBible does date each archive, in an `_about.htm`
+ * beside the text — but the pin covers only the verse file, so that date is not part of what the
+ * build verifies and recording it would imply a check nothing performs. What identifies the copy
+ * here is the digest and `retrievedAt`. A translation whose licence requires the edition's date
+ * to travel with the text (as the Bíblia Livre's does) needs the date pinned, not read in
+ * passing, and so does not belong in this helper.
+ *
+ * The source in `data/sources.json` carries the translation's own id, so there is one name to
+ * get wrong rather than two.
+ */
+function ebibleTranslation(id: TranslationId): DatasetBuilder {
+  return {
+    outputPath: translationDatasetPath(id),
+    build: async (readSource) => {
+      const { source, content } = await readSource(id);
+      const text = extractZipTextEntry(content, expectMember(source));
+      return importEbibleVerseLines(text, id, { ...provenanceOf(source), snapshotDate: null });
+    },
+  };
+}
+
 /** One builder per translation: the compiler enforces that every translation ID has one. */
 const TRANSLATION_BUILDERS: Readonly<Record<TranslationId, DatasetBuilder>> = {
-  'chr1914-sl': {
-    outputPath: translationDatasetPath('chr1914-sl'),
-    build: async (readSource) => {
-      const { content } = await readSource('chr1914-sl');
-      return parseTranslationTextFile(JSON.parse(content.toString('utf8')), {
-        id: 'chr1914-sl',
-        versification: 'kjv',
-      });
-    },
-  },
   bsb: {
     outputPath: translationDatasetPath('bsb'),
     build: async (readSource) => {
@@ -65,14 +84,30 @@ const TRANSLATION_BUILDERS: Readonly<Record<TranslationId, DatasetBuilder>> = {
       });
     },
   },
-  kjv: {
-    outputPath: translationDatasetPath('kjv'),
+  kjv: ebibleTranslation('kjv'),
+  blivre: {
+    outputPath: translationDatasetPath('blivre'),
     build: async (readSource) => {
-      const { source, content } = await readSource('kjv');
-      const text = extractZipTextEntry(content, 'eng-kjv2006_vpl.txt');
-      return importEbibleVerseLines(text, 'kjv', {
+      const { source, content } = await readSource('blivre');
+      const text = extractZipTextEntry(content, 'bliv-tr_vpl.txt');
+      return importEbibleVerseLines(text, 'blivre', {
         ...provenanceOf(source),
-        snapshotDate: null,
+        // The translators ask that the edition's date always travel with the text, and the
+        // release this is pinned to is the February 2018 one.
+        snapshotDate: '2018-02-25',
+      });
+    },
+  },
+  luther1912: ebibleTranslation('luther1912'),
+  riveduta1927: ebibleTranslation('riveduta1927'),
+  vbl: ebibleTranslation('vbl'),
+  'chr1914-sl': {
+    outputPath: translationDatasetPath('chr1914-sl'),
+    build: async (readSource) => {
+      const { content } = await readSource('chr1914-sl');
+      return parseTranslationTextFile(JSON.parse(content.toString('utf8')), {
+        id: 'chr1914-sl',
+        versification: 'kjv',
       });
     },
   },

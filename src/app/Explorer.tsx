@@ -1,5 +1,14 @@
-import { t } from '../locales/ui.ts';
-import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition, use } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+  use,
+} from 'react';
 import { formatPassage, type Passage } from '../core/bible/passage.ts';
 import { ErrorBoundary } from '../shared/ui/ErrorBoundary.tsx';
 import { getTranslationManifest } from '../translations/registry.ts';
@@ -15,11 +24,18 @@ import {
   type VizData,
 } from '../visualizations/shared/viz-data.ts';
 import styles from './Explorer.module.css';
-import { explorerUrl, plainTranslationFor } from './explorer-location.ts';
+import { explorerUrl, plainLocaleFor, plainTranslationFor } from './explorer-location.ts';
 import { InAppLink } from './InAppLink.tsx';
-import { useTranslationPreference } from './translation-choice.ts';
+import { readPreferredTranslation, useTranslationPreference } from './translation-choice.ts';
 import { useExplorerLocation } from './use-explorer-location.ts';
 import { ViewSwitch } from './ViewSwitch.tsx';
+import type { LocaleId } from '../i18n/locale-id.ts';
+import { translationDatasetPath } from '../core/datasets/paths.ts';
+import { cacheDatasets } from './register-offline-cache.ts';
+import { setActiveLocale, useLocalePreference, usePreferredLocale } from '../i18n/locale-choice.ts';
+import { getLocale } from '../i18n/registry.ts';
+import { localeManifestFileName } from '../i18n/locale-path.ts';
+import { useLocalization } from '../i18n/use-locale.tsx';
 import { VIEWS, type View } from './views.ts';
 
 const [HOME] = VIEWS;
@@ -32,12 +48,34 @@ const [HOME] = VIEWS;
  * home and starts over: it remounts every view in its default state.
  */
 export function Explorer({ core }: { readonly core: VizCore }) {
+  const { t, books } = useLocalization();
+  const [, rememberLocale] = useLocalePreference();
+  // The fallback for an address that names no language — the reader's own, not the one the
+  // last address happened to set.
+  const preferredLocale = usePreferredLocale();
   const { versification } = core;
-  // The reader's own translation, from an earlier visit; the URL still wins over it.
-  const [preferredTranslation, rememberTranslation] = useTranslationPreference();
+  // The reader's own translation, from an earlier visit; the URL still wins over it. Read at the
+  // reader's own language, because this answers "what may a link leave out", not "what does this
+  // link show".
+  const [preferredTranslation, rememberTranslation] = useTranslationPreference(preferredLocale);
   // The URL holds the view, the passage, the filter and the translation: one filter for every
   // view, so they agree on which links exist, and a shared link shows exactly what its author saw.
-  const [location, navigate] = useExplorerLocation(VIEWS, versification, preferredTranslation);
+  //
+  // The translation default is passed as a function so the address can settle the language first
+  // and ask for that language's Bible — `readPreferredTranslation` returns an explicit choice
+  // where there is one, and the language's own text otherwise. Handing it a value computed from a
+  // store instead let a `?lang=pt` entry reached by pressing Back show the English Bible.
+  const [location, navigate] = useExplorerLocation(
+    VIEWS,
+    versification,
+    readPreferredTranslation,
+    preferredLocale,
+  );
+  // The address is what the app speaks, not the other way round. It already answers both cases —
+  // a URL naming a language, and one that does not, which falls back to the reader's own — and
+  // taking the language from it is what makes Back work: a history entry carries the language it
+  // was created with, so returning to it returns to that language.
+  const localeId = location.locale;
   const { passage, filter } = location;
   // Suspends until the chosen text is here. Switching happens in a transition, so the previous
   // text stays on screen while the next one downloads instead of the page emptying.
@@ -64,15 +102,54 @@ export function Explorer({ core }: { readonly core: VizCore }) {
   const active = VIEWS.find((view) => view.id === location.view) ?? HOME;
 
   const title = [
-    passage && formatPassage(passage, versification),
-    active === HOME ? null : t(active.title),
-    t(import.meta.env.SITE_NAME),
+    passage && formatPassage(passage, versification, books),
+    active === HOME ? null : t(active.titleKey),
+    t('app.name'),
   ]
     .filter((part) => part !== null)
     .join(' · ');
   useEffect(() => {
     document.title = title;
   }, [title]);
+
+  // The language a reader picks belongs in the address, so a reload or a bookmark keeps it, and
+  // so does `<html lang>`, which is what a screen reader and the browser's own translation
+  // prompt read.
+  // Before paint, not after. Everything outside this component reads the language from its own
+  // store, so the address's answer has to be there by the time anything renders — an effect that
+  // runs afterwards leaves one painted frame where `<html lang>` and every link say Portuguese
+  // and the words are still English, which is exactly the frame Back lands on.
+  //
+  // Rewriting the address to match the store instead would erase the language from whichever
+  // history entry the reader just returned to.
+  useLayoutEffect(() => {
+    document.documentElement.lang = getLocale(localeId).tag;
+    setActiveLocale(localeId);
+    // And the manifest, which decides what an install is called and where it opens. Choosing a
+    // language pushes a new address without reloading the document, so the English page is
+    // still the one loaded — installing from it would otherwise give an app named in English
+    // that opens at the English root, however Portuguese the address bar had become.
+    document
+      .querySelector('link[rel="manifest"]')
+      ?.setAttribute('href', `${import.meta.env.BASE_URL}${localeManifestFileName(localeId)}`);
+  }, [localeId]);
+
+  // Choosing a language records it for next time and puts it in the address, so the choice
+  // survives a reload and travels with a shared link.
+  const chooseLocale = useCallback(
+    (id: LocaleId) => {
+      rememberLocale(id);
+      // The Bible follows the language for a reader who has not chosen one of their own, and
+      // stays put for a reader who has — `readPreferredTranslation` answers both. Naming it in
+      // the address keeps the two from drifting apart on the way back through history.
+      const translation = readPreferredTranslation(id);
+      navigate({ ...locationRef.current, locale: id, translation });
+      // And it is downloaded now, while there is certainly a network, rather than the next time
+      // the reader opens the app — which may be from a home-screen icon on a plane.
+      cacheDatasets([translationDatasetPath(translation)]);
+    },
+    [rememberLocale, navigate],
+  );
 
   useEffect(() => {
     const selector = focusTarget.current;
@@ -83,13 +160,15 @@ export function Explorer({ core }: { readonly core: VizCore }) {
   }, [location.view, generation]);
 
   const plainTranslation = plainTranslationFor(preferredTranslation);
+  const plainLocale = plainLocaleFor(preferredLocale);
   const hrefOf = (view: View, target: Passage | null) =>
     explorerUrl(
       view,
-      { passage: target, filter, translation: location.translation },
+      { passage: target, filter, translation: location.translation, locale: localeId },
       import.meta.env.BASE_URL,
       versification,
       plainTranslation,
+      plainLocale,
     );
 
   // Beside the search box: what a reader is looking at, not how it is drawn, so it sits with the
@@ -99,6 +178,8 @@ export function Explorer({ core }: { readonly core: VizCore }) {
       current={getTranslationManifest(chosenTranslation)}
       pending={isSwitchingTranslation}
       error={translationError}
+      localeId={localeId}
+      onLocaleChange={chooseLocale}
       onChange={(id) => {
         setTranslationError(null);
         requestedTranslation.current = id;
@@ -111,9 +192,7 @@ export function Explorer({ core }: { readonly core: VizCore }) {
             await translationLoader(id).load();
           } catch {
             resetTranslation(id);
-            setTranslationError(
-              t('{name} could not be loaded.', { name: getTranslationManifest(id).name }),
-            );
+            setTranslationError(t('menu.translation.failed')(getTranslationManifest(id).name));
             return;
           }
           if (requestedTranslation.current !== id) {
@@ -141,11 +220,13 @@ export function Explorer({ core }: { readonly core: VizCore }) {
               passage: null,
               filter: DEFAULT_LINK_FILTER,
               translation: location.translation,
+              locale: localeId,
             });
             setGeneration((value) => value + 1);
           }}
         >
-          {t(import.meta.env.SITE_NAME)}
+          <span className={styles.fullName}>{t('app.name')}</span>
+          <span className={styles.shortName}>{t('app.name.short')}</span>
         </InAppLink>
       </h1>
       <ViewSwitch
@@ -176,10 +257,7 @@ export function Explorer({ core }: { readonly core: VizCore }) {
           fallback={(error) => (
             <VizPage masthead={masthead} credits={<Credits translation={translation.manifest} />}>
               <p role="alert" className={styles.error}>
-                {t('{view} could not start: {error}', {
-                  view: t(view.title),
-                  error: error.message,
-                })}
+                {t('error.viewFailed')(t(view.titleKey), error.message)}
               </p>
             </VizPage>
           )}
@@ -206,6 +284,7 @@ export function Explorer({ core }: { readonly core: VizCore }) {
                     passage: target,
                     filter: DEFAULT_LINK_FILTER,
                     translation: location.translation,
+                    locale: localeId,
                   },
                   '',
                   versification,
@@ -214,9 +293,7 @@ export function Explorer({ core }: { readonly core: VizCore }) {
                   // translation of them.
                   null,
                 ),
-                data.translation.manifest.previewNotice
-                  ? window.location.origin
-                  : import.meta.env.SITE_URL,
+                import.meta.env.SITE_URL,
               ).href
             }
             passageLinks={(target) =>
@@ -230,7 +307,7 @@ export function Explorer({ core }: { readonly core: VizCore }) {
                   }}
                 >
                   <other.icon />
-                  {t(other.openLabel)}
+                  {t(other.openLabelKey)}
                 </InAppLink>
               ))
             }

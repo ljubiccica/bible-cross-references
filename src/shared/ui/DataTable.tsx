@@ -1,4 +1,3 @@
-import { t } from '../../locales/ui.ts';
 import type { Key, ReactNode } from 'react';
 import styles from './DataTable.module.css';
 
@@ -22,7 +21,7 @@ export function DataTable<Row>({
   columns,
   rows,
   rowKey,
-  emptyMessage = t('Nothing to show.'),
+  emptyMessage = 'Nothing to show.', // The debug page only; it stays in English.
 }: DataTableProps<Row>) {
   const alignment = (column: DataTableColumn<Row>) =>
     column.align === 'end' ? styles.end : undefined;

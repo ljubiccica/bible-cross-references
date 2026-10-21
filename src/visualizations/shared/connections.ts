@@ -1,6 +1,4 @@
-import { t } from '../../locales/ui.ts';
 import type { BookId } from '../../core/bible/books.ts';
-import { formatVerseIndexRange } from '../../core/bible/reference-format.ts';
 import type { VerseIndex } from '../../core/bible/verse-ref.ts';
 import type { VerseIndexRange, Versification } from '../../core/bible/versification.ts';
 import type {
@@ -92,22 +90,25 @@ export interface BookGroup {
  *   24:37 points to all of Genesis 6:1–7, not to 6:1 alone);
  * - in a chapter, every other link names the chapter's verse it starts or lands on.
  */
+export type LandingNote =
+  | { readonly kind: 'range'; readonly start: VerseIndex; readonly end: VerseIndex }
+  | { readonly kind: 'from-verse'; readonly verse: number }
+  | { readonly kind: 'to-verse'; readonly verse: number };
+
 export function landingNote(
   connection: Connection,
   versification: Versification,
   inChapter: boolean,
-): string | null {
+): LandingNote | null {
   const { link, direction } = connection;
   if (direction === 'incoming' && link.targetEnd !== link.targetStart) {
-    return t('to {reference}', {
-      reference: formatVerseIndexRange(versification, link.targetStart, link.targetEnd),
-    });
+    return { kind: 'range', start: link.targetStart, end: link.targetEnd };
   }
   if (!inChapter) {
     return null;
   }
   const verse = versification.refAt(connection.here).verse;
-  return t(direction === 'outgoing' ? 'from v. {verse}' : 'to v. {verse}', { verse });
+  return direction === 'outgoing' ? { kind: 'from-verse', verse } : { kind: 'to-verse', verse };
 }
 
 /** Groups connections (already sorted by their other end) by the book of the other end. */

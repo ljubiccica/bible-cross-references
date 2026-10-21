@@ -1,4 +1,3 @@
-import { t } from '../../locales/ui.ts';
 import { useMemo, useState } from 'react';
 import type { BookId } from '../../core/bible/books.ts';
 import { passageRange, type Passage } from '../../core/bible/passage.ts';
@@ -16,6 +15,9 @@ import { DEFAULT_LINK_FILTER, selectLinks } from '../shared/link-filter.ts';
 import type { VizData } from '../shared/viz-data.ts';
 import type { VisualizationProps } from '../visualization.ts';
 import { ThreadsStage, type ThreadDirection } from './ThreadsStage.tsx';
+import type { MessageKey } from '../../i18n/messages/types.ts';
+import { useLocalization } from '../../i18n/use-locale.tsx';
+import type { IconComponent } from '../../shared/ui/icons.tsx';
 
 /** Where reading starts without a `?ref=`: the Bible's own statement of connection. */
 const DEFAULT_CHAPTER = { book: 'John', chapter: 1 } as const satisfies {
@@ -24,10 +26,14 @@ const DEFAULT_CHAPTER = { book: 'John', chapter: 1 } as const satisfies {
 };
 
 const DIRECTIONS = [
-  { value: 'outgoing', label: 'Points to', icon: OutgoingIcon },
-  { value: 'incoming', label: 'Pointed from', icon: IncomingIcon },
-  { value: 'both', label: 'Both', icon: BothDirectionsIcon },
-] as const;
+  { value: 'outgoing', labelKey: 'threads.outgoing', icon: OutgoingIcon },
+  { value: 'incoming', labelKey: 'threads.incoming', icon: IncomingIcon },
+  { value: 'both', labelKey: 'threads.both', icon: BothDirectionsIcon },
+] as const satisfies readonly {
+  value: ThreadDirection;
+  labelKey: MessageKey;
+  icon: IconComponent;
+}[];
 
 function chapterOf(passage: Passage | null, data: VizData): { book: BookId; chapter: number } {
   if (!passage) {
@@ -53,7 +59,13 @@ export function ThreadsExplorer({
   passageLinks,
   shareUrl,
 }: VisualizationProps) {
+  const { t } = useLocalization();
   const [direction, setDirection] = useState<ThreadDirection>('outgoing');
+  const directions = DIRECTIONS.map(({ value, labelKey, icon }) => ({
+    value,
+    label: t(labelKey),
+    icon,
+  }));
   const { book, chapter } = chapterOf(passage, data);
   const selectedVerse = passage?.kind === 'verse' ? passage.verse : null;
   const { index } = data.crossReferences;
@@ -82,8 +94,8 @@ export function ThreadsExplorer({
           <ReferenceSearch versification={data.versification} onSelect={onNavigate} />
           {translationMenu}
           <SegmentedControl
-            label={t('Thread direction')}
-            options={DIRECTIONS}
+            label={t('threads.direction')}
+            options={directions}
             value={direction}
             onChange={setDirection}
             iconsOnlyWhenNarrow

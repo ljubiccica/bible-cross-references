@@ -28,11 +28,36 @@
   min-inline-size: 0;
 }
 
-/* Below 80rem the busiest view's controls no longer fit beside the site's name, so every view puts
+/* Below this the busiest view's controls no longer fit beside the site's name, so every view puts
    them on a second row, below the name and the view switch: the header keeps one height whichever
-   view is shown, and switching views never moves the content. */
+   view is shown, and switching views never moves the content.
+   80rem is where the English layout needs it. A longer language needs the second row sooner —
+   Portuguese overran 80rem by about 45px — but that is the longer language's cost to pay, not
+   English's: widening the threshold for everyone gave English a two-row header between 1280px
+   and 1376px, which is where a 1366×768 laptop and most half-screen windows sit. So the wider
+   threshold is scoped by `lang`, which `main.tsx` sets before the first paint. */
 @media (max-width: 79.99rem) {
   .masthead {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Portuguese and Ukrainian, where the same controls are about 45px wider and the header stops
+   fitting on one row inside this band. Keyed on the language because the width depends on the
+   words, and this and the `.search` rule in controls.module.css are the only two places in the
+   app that are.
+
+   Only those two, although German, Italian and Spanish were added afterwards and Italian's name
+   for the site is the longest of the six: a long name is not the same as a header that does not
+   fit, and none of the three needs the second row here. Which language belongs in this list is
+   therefore not a thing to reason about from the words — it is measured.
+   `tests/e2e/responsive.spec.ts` checks the header in every language at three widths inside this
+   band, so a language that does need it fails there rather than shipping a cramped header
+   nobody happens to open at this width. */
+@media (max-width: 85.99rem) {
+  :global(html[lang|='pt']) .masthead,
+  :global(html[lang|='uk']) .masthead {
     flex: 1 1 100%;
     justify-content: space-between;
   }

@@ -11,8 +11,26 @@ permissions:
   contents: read
 
 jobs:
+  # Types, type coverage, lint, formatting and the unit tests with their coverage thresholds
+  # (98% of statements, lines and functions — see vite.config.ts). Type coverage is a separate
+  # gate from `tsc`: strict mode stops TypeScript inferring `any` quietly, but a value can still
+  # arrive as one from an untyped boundary and spread from there.
+  #
+  # None of it reads the generated datasets, so it runs beside the build rather than before it.
   check:
-    name: Type check, lint, format, test, build
+    name: Type check, lint, format, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  build:
+    name: Build the site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -22,7 +40,7 @@ jobs:
           cache: npm
       - run: npm ci
       # The sources too large to keep in the repository (see data/raw/README.md) are downloaded by
-      # the build: the KJV archive and the tagged Hebrew and Greek, about 110 MB in all. The key
+      # the build: four eBible archives and the tagged Hebrew and Greek, about 130 MB in all. The key
       # is the whole pin file, so any re-pin fetches all of them again — which is the safe way
       # round, since the build refuses a local file that does not match its pin rather than
       # replacing it. Between re-pins nothing is downloaded, so a day when an upstream host is
@@ -32,20 +50,142 @@ jobs:
         with:
           path: data/raw
           key: raw-data-${{ hashFiles('data/sources.json') }}
-      - run: npm run check
       - run: npm run build
+      # `npm run build` rewrites data/datasets.lock.json from whatever it just produced. If that
+      # differs from what is committed, the generated scripture differs too — and since
+      # public/data is not in the repository, this file is the only place a reviewer would see
+      # it. Failing here turns "an importer changed" into "and here is what it did to the text".
+      - name: The generated datasets match the committed manifest
+        run: |
+          # Tracked first: `git diff` says nothing about a file that was never committed, so
+          # without this a deleted or forgotten manifest would pass the check by being absent.
+          if ! git ls-files --error-unmatch data/datasets.lock.json >/dev/null 2>&1; then
+            echo '::error::data/datasets.lock.json is not committed. Run `npm run data:build` and commit it.'
+            exit 1
+          fi
+          if ! git diff --quiet -- data/datasets.lock.json; then
+            echo '::error::The build produced different datasets than data/datasets.lock.json records.'
+            git --no-pager diff -- data/datasets.lock.json
+            echo 'Run `npm run data:build` and commit the updated manifest with your change.'
+            exit 1
+          fi
+      - name: Keep the built site for the end-to-end tests
+        uses: actions/upload-artifact@v7
+        with:
+          name: site
+          path: dist
+          retention-days: 1
       - name: Keep the built site for deployment
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
+  # The flows a reader actually goes through, in a real browser against the built site: reading a
+  # chapter, following a cross-reference, the original-language words, switching translation, the
+  # layout at twelve widths, and the browser's own Back and Forward.
+  #
+  # Split across machines because this is nearly the whole pipeline, and splitting is the only
+  # lever that does not trade away what the tests prove.
+  #
+  # Five, from measurement rather than instinct: the suite is about 30 minutes of machine time
+  # on a runner, and each shard pays only ~30s of checkout, install and artifact download, so
+  # the overhead is under 2% a shard and more of them keep helping for a while. The floor is the
+  # `offline` job beside this one at ~3.5 minutes — once a shard is quicker than that, `deploy`
+  # is waiting on offline instead and further shards buy nothing. Five lands around six minutes,
+  # comfortably clear of it.
+  e2e:
+    name: End-to-end tests (${{ matrix.shard }}/5)
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Take the site the build job made
+        uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: dist
+      # The browser is ~130 MB and the same for every run until Playwright itself is upgraded,
+      # so it is cached on the lockfile rather than downloaded five times a pipeline.
+      - name: Cache the browser
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      # Only Chromium: the suite tests this app's behaviour, not browser differences, and the
+      # service worker and WebGL both need a real engine rather than three of them. The system
+      # libraries it links against are not in the cache, so that part runs either way.
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Run the reader's flows
+        run: npx playwright test --project=desktop --project=phone --shard=${{ matrix.shard }}/5
+      - name: Keep the report when something failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ matrix.shard }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  # The offline cache, including that a new release replaces an old one — the one failure that
+  # could strand an audience on a stale version.
+  #
+  # Its own job because these tests edit the built `dist/sw.js` to stand in for a new release,
+  # so they cannot share a served site with anything else. A machine to themselves is a cleaner
+  # way to get that than the project dependency they use locally, which is why `--no-deps`:
+  # nothing else is running here to wait for.
+  offline:
+    name: Offline cache
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Take the site the build job made
+        uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: dist
+      - name: Cache the browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=offline --no-deps
+      - name: Keep the report when something failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-offline
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
   # Publishes main to trekhleb.dev/bible-cross-references/, once every check has passed. The domain
   # comes from the owner's user site; builds already use the /bible-cross-references/ base path.
   deploy:
     name: Deploy to GitHub Pages
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: check
+    needs: [check, build, e2e, offline]
     runs-on: ubuntu-latest
     permissions:
       pages: write

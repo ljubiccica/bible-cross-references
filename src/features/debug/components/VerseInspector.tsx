@@ -1,7 +1,9 @@
-import { t } from '../../../locales/ui.ts';
 import { useState, type SubmitEvent } from 'react';
 import { formatVerseRef } from '../../../core/bible/reference-format.ts';
 import { parseReference } from '../../../core/bible/reference-parse.ts';
+import { enBooks } from '../../../i18n/books/en.ts';
+import { describeReferenceError } from '../../../i18n/describe-reference-error.ts';
+import { ENGLISH } from '../../../i18n/use-locale.tsx';
 import { toOsisId, type VerseIndex } from '../../../core/bible/verse-ref.ts';
 import type { CrossReferenceLink } from '../../../cross-references/cross-reference-index.ts';
 import type { CrossReferenceDataset } from '../../../cross-references/load-cross-references.ts';
@@ -41,16 +43,18 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const input = new FormData(event.currentTarget).get('reference');
-    const result = parseReference(typeof input === 'string' ? input : '', versification);
+    const result = parseReference(typeof input === 'string' ? input : '', versification, enBooks);
     if (!result.ok) {
-      setError(result.error);
+      // The page is for whoever is working on the data, so it stays in the language the code
+      // is written in — and the lookup above uses the English names, so the sentence must too.
+      setError(describeReferenceError(result.error, ENGLISH));
       return;
     }
     // A chapter-only reference opens the chapter's first verse.
     const { book, chapter, verse: verseNumber = 1 } = result.reference;
     const index = versification.indexOf({ book, chapter, verse: verseNumber });
     if (index === undefined) {
-      setError(t('This verse does not exist.'));
+      setError('This verse does not exist.');
       return;
     }
     setError(null);
@@ -58,14 +62,14 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
   };
 
   const preview = (link: CrossReferenceLink, verseOfLink: VerseIndex) => {
-    const verseText = translation.textOrNote(verseOfLink);
+    const verseText = translation.verseText(verseOfLink) || '(omitted in this translation)';
     const extraVerses = link.targetEnd - link.targetStart;
     return verseOfLink === link.targetStart && extraVerses > 0
-      ? `${verseText} … (+${t('{count} more', { count: extraVerses })})`
+      ? `${verseText} … (+${extraVerses} more)`
       : verseText;
   };
   const votesColumn: DataTableColumn<CrossReferenceLink> = {
-    header: t('Votes'),
+    header: 'Votes',
     align: 'end',
     render: (link) => (
       <span className={link.votes < 0 ? styles.negative : undefined}>
@@ -74,7 +78,7 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
     ),
   };
   const idColumn: DataTableColumn<CrossReferenceLink> = {
-    header: t('Link ID'),
+    header: 'Link ID',
     align: 'end',
     render: (link) => <code>{link.id}</code>,
   };
@@ -83,22 +87,20 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
   return (
     <Section
       id={id}
-      title={t('Verse inspector')}
-      description={t(
-        'Look up any verse and debug its cross-references. Accepts references like “John 3:16”, “jn 3 16”, “1co13:4”, “Ps 23” or “Gen.1.1”.',
-      )}
+      title="Verse inspector"
+      description="Look up any verse and debug its cross-references. Accepts references like “John 3:16”, “jn 3 16”, “1co13:4”, “Ps 23” or “Gen.1.1”."
     >
       <form key={verse} className={styles.toolbar} onSubmit={handleSubmit}>
         <input
           name="reference"
           className={styles.input}
-          defaultValue={formatVerseRef(ref)}
-          aria-label={t('Bible reference')}
+          defaultValue={formatVerseRef(ref, enBooks)}
+          aria-label="Bible reference"
           autoComplete="off"
         />
         <button type="submit" className={styles.button}>
           <SearchIcon />
-          {t('Inspect')}
+          Inspect
         </button>
         <button
           type="button"
@@ -109,7 +111,7 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
           }}
         >
           <PreviousIcon />
-          {t('Previous')}
+          Previous
         </button>
         <button
           type="button"
@@ -119,7 +121,7 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
             selectVerse(verse + 1);
           }}
         >
-          {t('Next')}
+          Next
           <NextIcon />
         </button>
       </form>
@@ -130,21 +132,23 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
       )}
 
       <article className={styles.verseCard}>
-        <h3 className={styles.verseTitle}>{formatVerseRef(ref)}</h3>
-        <p className={styles.verseText}>{text || <em>{translation.textOrNote(verse)}</em>}</p>
+        <h3 className={styles.verseTitle}>{formatVerseRef(ref, enBooks)}</h3>
+        <p className={styles.verseText}>
+          {text || <em>Omitted in the {translation.manifest.abbreviation}.</em>}
+        </p>
         <p className={styles.muted}>
-          OSIS <code>{toOsisId(ref)}</code> {t('· canonical index')} <code>{verse}</code> ·{' '}
+          OSIS <code>{toOsisId(ref)}</code> · canonical index <code>{verse}</code> ·{' '}
           {translation.manifest.abbreviation}
         </p>
       </article>
 
       <label className={styles.toolbar}>
-        {t('Minimum votes')}
+        Minimum votes
         <input
           type="number"
           className={styles.numberInput}
           value={minVotes ?? ''}
-          placeholder={t('any')}
+          placeholder="any"
           onChange={(event) => {
             setMinVotes(parseMinVotes(event.target.value));
           }}
@@ -160,37 +164,31 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
           <div key={manifest.id} className={styles.stack}>
             <h3 className={styles.subheading}>{manifest.name}</h3>
             <DataTable
-              caption={t('Outgoing links: {shown} of {total}', {
-                shown: formatInteger(shownOutgoing.length),
-                total: formatInteger(outgoing.length),
-              })}
+              caption={`Outgoing links: ${formatInteger(shownOutgoing.length)} of ${formatInteger(outgoing.length)}`}
               rows={shownOutgoing}
               rowKey={(link) => link.id}
-              emptyMessage={t('No outgoing links.')}
+              emptyMessage="No outgoing links."
               columns={[
                 {
-                  header: t('To'),
+                  header: 'To',
                   render: (link) => (
                     <VerseLink verse={link.targetStart} rangeEnd={link.targetEnd} />
                   ),
                 },
                 votesColumn,
-                { header: t('Text'), render: (link) => preview(link, link.targetStart) },
+                { header: 'Text', render: (link) => preview(link, link.targetStart) },
                 idColumn,
               ]}
             />
             <DataTable
-              caption={t('Incoming links: {shown} of {total}', {
-                shown: formatInteger(shownIncoming.length),
-                total: formatInteger(incoming.length),
-              })}
+              caption={`Incoming links: ${formatInteger(shownIncoming.length)} of ${formatInteger(incoming.length)}`}
               rows={shownIncoming}
               rowKey={(link) => link.id}
-              emptyMessage={t('No incoming links.')}
+              emptyMessage="No incoming links."
               columns={[
-                { header: t('From'), render: (link) => <VerseLink verse={link.from} /> },
+                { header: 'From', render: (link) => <VerseLink verse={link.from} /> },
                 {
-                  header: t('Target'),
+                  header: 'Target',
                   render: (link) =>
                     link.targetStart === link.targetEnd ? (
                       'this verse'
@@ -199,7 +197,7 @@ export function VerseInspector({ id, verse, translation, datasets }: VerseInspec
                     ),
                 },
                 votesColumn,
-                { header: t('Text'), render: (link) => preview(link, link.from) },
+                { header: 'Text', render: (link) => preview(link, link.from) },
                 idColumn,
               ]}
             />

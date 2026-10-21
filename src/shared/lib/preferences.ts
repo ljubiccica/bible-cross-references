@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { preferenceKey } from './preference-keys.ts';
 
 /**
  * Small per-reader preferences, kept in localStorage so they last between visits.
@@ -9,7 +10,6 @@ import { useCallback, useSyncExternalStore } from 'react';
  * - Every component using a preference sees its changes at once, including other tabs.
  */
 
-const PREFIX = 'bible-cross-references:';
 const memory = new Map<string, string>();
 const listeners = new Set<() => void>();
 
@@ -19,35 +19,46 @@ function notify(): void {
   }
 }
 
+function onStorage(): void {
+  memory.clear(); // Another tab changed a preference: read it again.
+  notify();
+}
+
+/**
+ * One window listener for all of them, attached with the first subscriber and dropped with the
+ * last. A listener each would be fine for a handful of components, but a preference read inside
+ * a list item is read hundreds of times over, and the event would then cost that many listeners
+ * each fanning out to that many again.
+ */
 function subscribe(listener: () => void): () => void {
-  const onStorage = () => {
-    memory.clear(); // Another tab changed a preference: read it again.
-    notify();
-  };
+  if (listeners.size === 0) {
+    window.addEventListener('storage', onStorage);
+  }
   listeners.add(listener);
-  window.addEventListener('storage', onStorage);
   return () => {
     listeners.delete(listener);
-    window.removeEventListener('storage', onStorage);
+    if (listeners.size === 0) {
+      window.removeEventListener('storage', onStorage);
+    }
   };
 }
 
 function read(key: string): string | null {
-  const stored = memory.get(PREFIX + key);
+  const stored = memory.get(preferenceKey(key));
   if (stored !== undefined) {
     return stored;
   }
   try {
-    return localStorage.getItem(PREFIX + key);
+    return localStorage.getItem(preferenceKey(key));
   } catch {
     return null;
   }
 }
 
 function write(key: string, value: string): void {
-  memory.set(PREFIX + key, value);
+  memory.set(preferenceKey(key), value);
   try {
-    localStorage.setItem(PREFIX + key, value);
+    localStorage.setItem(preferenceKey(key), value);
   } catch {
     // Unavailable: the value lasts for this visit only.
   }
@@ -57,6 +68,11 @@ function write(key: string, value: string): void {
 /** Reads a stored preference outside React, e.g. before the app renders. */
 export function readPreference(key: string): string | null {
   return read(key);
+}
+
+/** Writes one outside React, e.g. to settle the language before the first paint. */
+export function writePreference(key: string, value: string): void {
+  write(key, value);
 }
 
 /** A stored preference, `fallback` until the reader changes it. */

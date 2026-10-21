@@ -1,4 +1,15 @@
 dist/
 coverage/
+test-results/
+playwright-report/
 public/data/
 package-lock.json
+
+# The HTML entry of every language but the default one, generated from src/i18n/site-copy.ts by
+# vite/locale-entries.ts. Written into a directory named after the language, so this matches any
+# of them without needing a line per language; the two committed entries are source and are
+# checked as usual.
+**/index.html
+!/index.html
+!/threads/index.html
+!/debug/index.html

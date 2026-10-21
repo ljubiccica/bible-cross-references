@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Versification } from '../core/bible/versification.ts';
 import type { TranslationId } from '../core/datasets/ids.ts';
+import type { LocaleId } from '../i18n/locale-id.ts';
 import {
   explorerUrl,
+  localeUpgradeUrl,
   parseExplorerUrl,
+  plainLocaleFor,
   plainTranslationFor,
   type ExplorerLocation,
   type ViewRoute,
@@ -22,7 +25,8 @@ export interface NavigateOptions {
 export function useExplorerLocation<Id extends string>(
   routes: readonly [ViewRoute<Id>, ...ViewRoute<Id>[]],
   versification: Versification,
-  defaultTranslation: TranslationId,
+  defaultTranslation: (locale: LocaleId) => TranslationId,
+  defaultLocale: LocaleId,
 ): readonly [
   ExplorerLocation<Id>,
   (next: ExplorerLocation<Id>, options?: NavigateOptions) => void,
@@ -35,10 +39,30 @@ export function useExplorerLocation<Id extends string>(
         routes,
         versification,
         defaultTranslation,
+        defaultLocale,
       ),
-    [routes, versification, defaultTranslation],
+    [routes, versification, defaultTranslation, defaultLocale],
   );
   const [location, setLocation] = useState(read);
+
+  // A link shared before the language paths existed says `?lang=pt`. It still opens in
+  // Portuguese — `parseExplorerUrl` reads the parameter exactly as it always has — and this
+  // moves the language into the path afterwards, without a navigation and without touching
+  // anything else the address carries, so that the link the reader goes on to copy or bookmark
+  // is the one that previews in Portuguese. Replace, never push: pressing Back must leave the
+  // app, not undo a rewrite the reader never asked for.
+  useEffect(() => {
+    const upgraded = localeUpgradeUrl(
+      new URL(window.location.href),
+      import.meta.env.BASE_URL,
+      routes,
+    );
+    if (upgraded !== null) {
+      window.history.replaceState(null, '', upgraded);
+    }
+    // Once, on arrival. `routes` is a module constant, so this does not re-run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const syncFromUrl = () => {
@@ -59,7 +83,10 @@ export function useExplorerLocation<Id extends string>(
         next,
         import.meta.env.BASE_URL,
         versification,
-        plainTranslationFor(defaultTranslation),
+        // What this reader would land on without a `?t=`: their own preference, read at their
+        // own language rather than at whatever language the address happens to name.
+        plainTranslationFor(defaultTranslation(defaultLocale)),
+        plainLocaleFor(defaultLocale),
       );
       if (url !== `${window.location.pathname}${window.location.search}`) {
         if (replace) {
@@ -69,7 +96,7 @@ export function useExplorerLocation<Id extends string>(
         }
       }
     },
-    [routes, versification, defaultTranslation],
+    [routes, versification, defaultTranslation, defaultLocale],
   );
 
   return [location, navigate];

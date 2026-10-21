@@ -1,13 +1,14 @@
 import { BOOKS, getReferenceName, type BookId } from '../../../src/core/bible/books.ts';
 import { toOsisId, type VerseIndex } from '../../../src/core/bible/verse-ref.ts';
 import { CANONICAL_VERSIFICATION } from '../../../src/core/bible/versification.ts';
+import { getTranslationManifest } from '../../../src/translations/registry.ts';
 import {
   DATASET_SCHEMA_VERSION,
   type DatasetProvenance,
   type TranslationTextFile,
 } from '../../../src/core/datasets/formats.ts';
 import { stripByteOrderMark } from '../lib/files.ts';
-import { createNotice } from '../lib/notices.ts';
+import { omittedVerseNotices } from '../lib/omitted-verses.ts';
 
 /**
  * Importer for the Berean Standard Bible plain-text edition (https://bereanbible.com/bsb.txt).
@@ -28,6 +29,8 @@ const BOOK_IDS_BY_NAME: ReadonlyMap<string, BookId> = new Map(
 );
 
 export function importBsbText(text: string, provenance: DatasetProvenance): TranslationTextFile {
+  // The credit travels in the file: it is served on its own and kept on readers' devices.
+  const manifest = getTranslationManifest('bsb');
   const versification = CANONICAL_VERSIFICATION;
   const lines = stripByteOrderMark(text).split(/\r?\n/);
   const headerLineIndex = lines.findIndex((line) => line.startsWith(COLUMN_HEADER));
@@ -83,17 +86,9 @@ export function importBsbText(text: string, provenance: DatasetProvenance): Tran
     schemaVersion: DATASET_SCHEMA_VERSION,
     versification: versification.id,
     provenance,
-    notices:
-      omitted.length > 0
-        ? [
-            createNotice(
-              'info',
-              'Verses without text: the translation omits them (they are absent from the ' +
-                'earliest manuscripts) and gives them in footnotes instead.',
-              omitted,
-            ),
-          ]
-        : [],
+    license: manifest.license,
+    attribution: manifest.attribution,
+    notices: omittedVerseNotices('bsb', omitted),
     translationId: 'bsb',
     verses: complete,
   };

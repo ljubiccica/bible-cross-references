@@ -1,5 +1,5 @@
-import { t } from '../../../locales/ui.ts';
 import type { TranslationManifest } from '../../../translations/translation-manifest.ts';
+import { useLocalization } from '../../../i18n/use-locale.tsx';
 import styles from './Credits.module.css';
 
 interface CreditsProps {
@@ -18,14 +18,16 @@ interface CreditsProps {
  * change was, is in the README that the footer's source mark links to. A phone footer has room
  * for the attribution or for the background, not for both.
  *
- * The text's own credit comes from its manifest, so it follows whichever translation is read. On
- * a phone it goes with the background: it is a courtesy rather than a condition (every text here
- * is public domain), and the header's picker names the text being read at every width.
+ * The text's own credit comes from its manifest, so it follows whichever translation is read.
+ * Whether a phone keeps it depends on the text: a public-domain one is a courtesy and gives way
+ * to the room, while one under a licence names that licence on every copy and stays. Either way
+ * the full credit, with the licence's own address, is in the picker that names the text.
  */
 export function Credits({ translation, inspiration }: CreditsProps) {
+  const { t } = useLocalization();
   return (
     <>
-      <span className={styles.detail}>{t('Links:')} </span>
+      <span className={styles.detail}>{t('credits.links')} </span>
       <a href="https://www.openbible.info/labs/cross-references/" target="_blank" rel="noreferrer">
         OpenBible.info
       </a>{' '}
@@ -33,30 +35,39 @@ export function Credits({ translation, inspiration }: CreditsProps) {
       <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
         CC BY 4.0
       </a>
-      <span className={styles.wide}>{t(', from the Treasury of Scripture Knowledge')}</span>
+      <span className={styles.wide}>{t('credits.fromTsk')}</span>
       <span className={styles.detail}>
-        , re-indexed<span className={styles.wide}> to KJV verse numbering</span>
+        {t('credits.reindexed')}
+        <span className={styles.wide}>{t('credits.toKjv')}</span>
       </span>
       )
-      <span className={styles.text}>
+      {/* A public-domain text is credited as a courtesy, and a narrow screen may drop it; one
+          under a licence names that licence wherever it is distributed, this page included. */}
+      <span className={styles.text} data-optional={translation.license.publicDomain === true}>
         {' '}
-        {t('· Text:')}{' '}
+        · {t('credits.text')}{' '}
         <a href={translation.homepage} target="_blank" rel="noreferrer">
           {translation.abbreviation}
+        </a>{' '}
+        (
+        <a href={translation.license.url} target="_blank" rel="noreferrer">
+          {translation.license.publicDomain === true
+            ? t('license.publicDomain')
+            : translation.license.name}
         </a>
-        <span className={styles.detail}> ({t(translation.license.name)})</span>
+        )
       </span>
       {inspiration && (
         <span className={styles.wide}>
           {' '}
-          {t('· Inspired by')}{' '}
+          · {t('credits.inspiredBy')}{' '}
           {/* The work's own name is this app's name too, so saying it here reads as a stutter and
               costs the line the room it needs; the link, and its tooltip, still carry it. */}
           <a
             href={inspiration.url}
             target="_blank"
             rel="noreferrer"
-            title={`${inspiration.title}, by ${inspiration.author}`}
+            title={t('credits.inspiration')(inspiration.title, inspiration.author)}
           >
             {inspiration.author}
           </a>

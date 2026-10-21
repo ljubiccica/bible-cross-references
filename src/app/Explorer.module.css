@@ -27,9 +27,26 @@
   color: var(--color-text-muted);
 }
 
+/* The name is the one part of the header that can give way: below this the switch, the search
+   box and the menus all need their room, and the shorter name still says what the page is.
+   Portuguese needs the help sooner than English, so the rule is on width, not on language. */
+.shortName {
+  display: none;
+}
+
 @media (max-width: 47.99rem) {
   .title {
     font-size: 1.0625rem;
+  }
+}
+
+@media (max-width: 26.99rem) {
+  .fullName {
+    display: none;
+  }
+
+  .shortName {
+    display: inline;
   }
 }
 

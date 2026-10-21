@@ -22,3 +22,10 @@ const CROSS_REFERENCE_SOURCES: Readonly<
 
 export const CROSS_REFERENCE_SOURCE_MANIFESTS: readonly CrossReferenceSourceManifest[] =
   Object.values(CROSS_REFERENCE_SOURCES);
+
+/** The manifest for a cross-reference source, by id. */
+export function getCrossReferenceSourceManifest(
+  id: CrossReferenceSourceId,
+): CrossReferenceSourceManifest {
+  return CROSS_REFERENCE_SOURCES[id];
+}

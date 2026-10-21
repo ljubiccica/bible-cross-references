@@ -7,6 +7,7 @@ import {
   expectOneOf,
   expectRecord,
   expectString,
+  ValidationError,
   expectStringArray,
 } from '../lib/validation.ts';
 import type { CrossReferenceSourceId, TranslationId, WordSourceId } from './ids.ts';
@@ -49,6 +50,19 @@ interface DatasetFileBase<Format extends string> {
 
 export interface TranslationTextFile extends DatasetFileBase<'translation-text'> {
   readonly translationId: TranslationId;
+  /**
+   * Carried in the file itself: a translation is served on its own, and kept on readers' devices
+   * by the offline cache, so a copy that travels without the app should still say whose text it
+   * is and under what licence.
+   *
+   * Optional when reading, always written when building. The offline cache keeps datasets across
+   * releases under a URL with no content hash, so the first load after a deployment parses the
+   * *previous* release's file: a field this release added cannot be one the parser demands, or
+   * every installed reader meets a validation error instead of the app. Nothing here is read at
+   * runtime — the app shows `manifest.license` from its own registry — so absence is harmless.
+   */
+  readonly license?: LicenseInfo;
+  readonly attribution?: string;
   /** Verse texts in canonical order. An empty string marks a verse the translation omits. */
   readonly verses: readonly string[];
 }
@@ -70,6 +84,9 @@ export interface CrossReferencesFile extends DatasetFileBase<'cross-references'>
   readonly sourceId: CrossReferenceSourceId;
   /** Number of data rows in the raw source file. */
   readonly sourceRowCount: number;
+  /** As on a translation, and for the same reason: this file is served and cached on its own. */
+  readonly license?: LicenseInfo;
+  readonly attribution?: string;
   readonly links: CrossReferenceColumns;
 }
 
@@ -152,14 +169,40 @@ export interface ExpectedDataset<Id extends string> {
   readonly versification: VersificationId;
 }
 
+/**
+ * The licence block both self-describing datasets carry. `publicDomain` is a fact about the work
+ * rather than a display choice, so it travels with a file that is served on its own; a file that
+ * does not say is treated as licensed, which is the safe way round.
+ */
+function expectLicense(value: unknown): LicenseInfo {
+  const license = expectRecord(value, 'license');
+  const publicDomain = license['publicDomain'];
+  if (publicDomain !== undefined && typeof publicDomain !== 'boolean') {
+    throw new ValidationError(
+      'license.publicDomain',
+      `expected a boolean, got ${typeof publicDomain}`,
+    );
+  }
+  return {
+    name: expectString(license['name'], 'license.name'),
+    url: expectString(license['url'], 'license.url'),
+    ...(publicDomain === undefined ? {} : { publicDomain }),
+  };
+}
+
 export function parseTranslationTextFile(
   json: unknown,
   expected: ExpectedDataset<TranslationId>,
 ): TranslationTextFile {
   const { record, base } = parseFileBase(json, 'translation-text', expected.versification);
+  const license = record['license'];
+  const attribution = record['attribution'];
   return {
     ...base,
     translationId: expectOneOf(record['translationId'], [expected.id], 'translationId'),
+    // Absent only in a file cached before these fields existed; present, it is still validated.
+    ...(license === undefined ? {} : { license: expectLicense(license) }),
+    ...(attribution === undefined ? {} : { attribution: expectString(attribution, 'attribution') }),
     verses: expectStringArray(record['verses'], 'verses'),
   };
 }
@@ -170,10 +213,14 @@ export function parseCrossReferencesFile(
 ): CrossReferencesFile {
   const { record, base } = parseFileBase(json, 'cross-references', expected.versification);
   const links = expectRecord(record['links'], 'links');
+  const license = record['license'];
+  const attribution = record['attribution'];
   return {
     ...base,
     sourceId: expectOneOf(record['sourceId'], [expected.id], 'sourceId'),
     sourceRowCount: expectInteger(record['sourceRowCount'], 'sourceRowCount'),
+    ...(license === undefined ? {} : { license: expectLicense(license) }),
+    ...(attribution === undefined ? {} : { attribution: expectString(attribution, 'attribution') }),
     links: {
       offsets: expectIntegerArray(links['offsets'], 'links.offsets'),
       targetStart: expectIntegerArray(links['targetStart'], 'links.targetStart'),
@@ -189,14 +236,10 @@ export function parseOriginalWordsFile(
 ): OriginalWordsFile {
   const { record, base } = parseFileBase(json, 'original-words', expected.versification);
   const words = expectRecord(record['words'], 'words');
-  const license = expectRecord(record['license'], 'license');
   return {
     ...base,
     sourceId: expectOneOf(record['sourceId'], [expected.id], 'sourceId'),
-    license: {
-      name: expectString(license['name'], 'license.name'),
-      url: expectString(license['url'], 'license.url'),
-    },
+    license: expectLicense(record['license']),
     attribution: expectString(record['attribution'], 'attribution'),
     maxVerses: expectInteger(record['maxVerses'], 'maxVerses'),
     words: {

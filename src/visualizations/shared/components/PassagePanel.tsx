@@ -1,8 +1,4 @@
-import { t, verseCount } from '../../../locales/ui.ts';
-import { getDisplayBookName } from '../../../core/bible/book-labels.ts';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
-
-import { getBook } from '../../../core/bible/books.ts';
 import { GENRES, getBookGenre } from '../../../core/bible/genres.ts';
 import {
   chapterPassageOf,
@@ -16,7 +12,6 @@ import { formatVerseIndexRange, formatVerseRef } from '../../../core/bible/refer
 import type { VerseIndex } from '../../../core/bible/verse-ref.ts';
 import type { Versification } from '../../../core/bible/versification.ts';
 import { elementAt } from '../../../core/lib/array.ts';
-import { formatInteger } from '../../../shared/lib/format.ts';
 import {
   CloseIcon,
   CopiedIcon,
@@ -32,13 +27,20 @@ import {
 } from '../../../shared/ui/icons.tsx';
 import type { Translation } from '../../../translations/translation.ts';
 import { verseTextOrNote } from '../../../translations/verse-text.ts';
-import { collectConnections, groupByBook, landingNote, type Connection } from '../connections.ts';
+import {
+  collectConnections,
+  groupByBook,
+  landingNote,
+  type Connection,
+  type LandingNote,
+} from '../connections.ts';
 import type { LinkFilter } from '../link-filter.ts';
 import { canCopy, copyQuote, quotePassage, type PassageQuote } from '../passage-quote.ts';
 import { GENRE_COLORS, GENRE_HEX } from '../palette.ts';
 import { OriginalWordsSection } from './OriginalWordsSection.tsx';
 import { PanelSection } from './PanelSection.tsx';
 import type { VizData } from '../viz-data.ts';
+import { useLocalization, type Localization } from '../../../i18n/use-locale.tsx';
 import styles from './PassagePanel.module.css';
 
 interface PassagePanelProps {
@@ -74,6 +76,7 @@ function CopyQuoteButton({
   readonly reference: string;
   readonly quote: () => PassageQuote;
 }) {
+  const { t } = useLocalization();
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) {
@@ -95,8 +98,8 @@ function CopyQuoteButton({
         type="button"
         className={styles.copy}
         data-copied={copied}
-        aria-label={t('Copy {reference} with a link', { reference })}
-        title={t('Copy with a link')}
+        aria-label={t('panel.copy')(reference)}
+        title={t('panel.copy.title')}
         onClick={() => {
           void copyQuote(quote()).then(
             () => {
@@ -109,7 +112,7 @@ function CopyQuoteButton({
         {copied ? <CopiedIcon /> : <CopyIcon />}
       </button>
       <span className={styles.visuallyHidden} role="status">
-        {copied ? t('{reference} copied', { reference }) : ''}
+        {copied ? t('panel.copied')(reference) : ''}
       </span>
     </>
   );
@@ -142,31 +145,47 @@ function ConnectionText({
   readonly start: VerseIndex;
   readonly end: VerseIndex;
 }) {
+  const { t, books, n } = useLocalization();
+  // The text is in the translation's language, which is not always the interface's: a reader
+  // on a Portuguese interface may be reading the KJV. Saying so is what lets a screen reader
+  // pronounce it, and a right-to-left text lay itself out.
+  const lang = translation.manifest.language;
+  const dir = translation.manifest.direction;
   if (start === end) {
-    return <span className={styles.snippet}>{verseTextOrNote(translation, start)}</span>;
+    return (
+      <span className={styles.snippet} lang={lang} dir={dir}>
+        {verseTextOrNote(translation, start, t('panel.omitted')(translation.manifest.abbreviation))}
+      </span>
+    );
   }
   const first = versification.refAt(start);
   const last = Math.min(end, start + MAX_PASSAGE_VERSES - 1);
   const verses = Array.from({ length: last - start + 1 }, (_, offset) => start + offset);
   const more = end - last;
   return (
-    <span className={styles.snippet}>
+    <span className={styles.snippet} lang={lang} dir={dir}>
       {verses.map((verse) => {
         const ref = versification.refAt(verse);
         const mark =
           ref.book !== first.book
-            ? formatVerseRef(ref)
+            ? formatVerseRef(ref, books)
             : ref.chapter !== first.chapter
               ? `${String(ref.chapter)}:${String(ref.verse)}`
               : String(ref.verse);
         return (
           <Fragment key={verse}>
             <sup className={styles.verseMark}>{mark}</sup>
-            {verseTextOrNote(translation, verse)}{' '}
+            {verseTextOrNote(
+              translation,
+              verse,
+              t('panel.omitted')(translation.manifest.abbreviation),
+            )}{' '}
           </Fragment>
         );
       })}
-      {more > 0 && <span className={styles.moreVerses}>+ {verseCount(more)}</span>}
+      {more > 0 && (
+        <span className={styles.moreVerses}>{t('panel.moreVerses')(n(more), more)}</span>
+      )}
     </span>
   );
 }
@@ -185,6 +204,7 @@ export function PassagePanel({
   onPreview,
   shareUrl,
 }: PassagePanelProps) {
+  const { t, books, genreName } = useLocalization();
   const { versification, translation, crossReferences, verseGenres } = data;
   const connections = useMemo(
     () =>
@@ -201,6 +221,7 @@ export function PassagePanel({
   const genre = getBookGenre(book.id);
   const previous = neighbor(passage, -1, versification);
   const next = neighbor(passage, 1, versification);
+  const isVerse = passage.kind === 'verse';
 
   return (
     <div className={styles.panel}>
@@ -208,15 +229,16 @@ export function PassagePanel({
         <div className={styles.heading}>
           <p className={styles.eyebrow}>
             <span className={styles.key} style={{ background: GENRE_COLORS[genre.id] }} />
-            {t(genre.name)} · {book.testament === 'OT' ? t('Old Testament') : t('New Testament')}
+            {genreName(genre.id)} ·{' '}
+            {book.testament === 'OT' ? t('testament.OT') : t('testament.NT')}
           </p>
-          <h2 className={styles.title}>{formatPassage(passage, versification)}</h2>
+          <h2 className={styles.title}>{formatPassage(passage, versification, books)}</h2>
         </div>
         <button
           type="button"
           className={styles.iconButton}
           disabled={!previous}
-          aria-label={t(passage.kind === 'verse' ? 'Previous verse' : 'Previous chapter')}
+          aria-label={t(isVerse ? 'panel.previousVerse' : 'panel.previousChapter')}
           onClick={() => {
             if (previous) onSelect(previous);
           }}
@@ -227,7 +249,7 @@ export function PassagePanel({
           type="button"
           className={styles.iconButton}
           disabled={!next}
-          aria-label={t(passage.kind === 'verse' ? 'Next verse' : 'Next chapter')}
+          aria-label={t(isVerse ? 'panel.nextVerse' : 'panel.nextChapter')}
           onClick={() => {
             if (next) onSelect(next);
           }}
@@ -237,7 +259,7 @@ export function PassagePanel({
         <button
           type="button"
           className={styles.iconButton}
-          aria-label={t('Close')}
+          aria-label={t('panel.close')}
           onClick={onClose}
         >
           <CloseIcon />
@@ -250,13 +272,24 @@ export function PassagePanel({
         {passage.kind === 'verse' ? (
           <>
             <div className={styles.quotable}>
-              <p className={styles.verseText}>{verseTextOrNote(translation, passage.verse)}</p>
+              <p
+                className={styles.verseText}
+                lang={translation.manifest.language}
+                dir={translation.manifest.direction}
+              >
+                {verseTextOrNote(
+                  translation,
+                  passage.verse,
+                  t('panel.omitted')(translation.manifest.abbreviation),
+                )}
+              </p>
               <CopyQuoteButton
-                reference={formatPassage(passage, versification)}
+                reference={formatPassage(passage, versification, books)}
                 quote={() =>
                   quotePassage({
                     translation,
                     versification,
+                    names: books,
                     start: passage.verse,
                     end: passage.verse,
                     url: shareUrl(passage),
@@ -285,10 +318,9 @@ export function PassagePanel({
         <ConnectionSection
           id="references"
           icon={OutgoingIcon}
-          title={t('References')}
-          description={t('where this passage points')}
-          countLabel={t('passages')}
-
+          title={t('panel.references')}
+          description={t('panel.references.note')}
+          countLabel={t('panel.passages')}
           connections={connections.outgoing}
           showSourceVerse={passage.kind === 'chapter'}
           data={data}
@@ -299,10 +331,9 @@ export function PassagePanel({
         <ConnectionSection
           id="referenced-by"
           icon={IncomingIcon}
-          title={t('Referenced by')}
-          description={t('passages that point here')}
-          countLabel={t('passages')}
-
+          title={t('panel.referencedBy')}
+          description={t('panel.referencedBy.note')}
+          countLabel={t('panel.passages')}
           connections={connections.incoming}
           showSourceVerse={passage.kind === 'chapter'}
           data={data}
@@ -332,6 +363,7 @@ function ChapterVerses({
   readonly connections: readonly Connection[];
   readonly onSelect: (passage: Passage) => void;
 }) {
+  const { t, n } = useLocalization();
   const counts = new Map<VerseIndex, number>();
   for (const connection of connections) {
     counts.set(connection.here, (counts.get(connection.here) ?? 0) + 1);
@@ -341,10 +373,10 @@ function ChapterVerses({
     <PanelSection
       id="verses"
       icon={ReadingIcon}
-      title={t('Verses')}
-      description={t('tap one to focus it')}
+      title={t('panel.verses')}
+      description={t('panel.verses.note')}
       count={verses.length}
-      countLabel={t('verses')}
+      countLabel={t('panel.versesCounted')}
     >
       {verses.map((verse, offset) => (
         <button
@@ -356,12 +388,38 @@ function ChapterVerses({
           }}
         >
           <span className={styles.verseNumber}>{offset + 1}</span>
-          <span className={styles.snippet}>{verseTextOrNote(translation, verse)}</span>
-          <span className={styles.count}>{formatInteger(counts.get(verse) ?? 0)}</span>
+          <span className={styles.snippet}>
+            {verseTextOrNote(
+              translation,
+              verse,
+              t('panel.omitted')(translation.manifest.abbreviation),
+            )}
+          </span>
+          <span className={styles.count}>{n(counts.get(verse) ?? 0)}</span>
         </button>
       ))}
     </PanelSection>
   );
+}
+
+/**
+ * Puts a connection's landing note into words: where in the passage this link meets it. The
+ * note itself is data (see `landingNote`), so that the sentence can be built in the reader's
+ * own language here rather than in the code that works out the connections.
+ */
+function describeLandingNote(
+  note: LandingNote,
+  versification: Versification,
+  { t, books, n }: Localization,
+): string {
+  switch (note.kind) {
+    case 'range':
+      return t('note.toRange')(formatVerseIndexRange(versification, books, note.start, note.end));
+    case 'from-verse':
+      return t('note.fromVerse')(n(note.verse));
+    case 'to-verse':
+      return t('note.toVerse')(n(note.verse));
+  }
 }
 
 /**
@@ -376,6 +434,7 @@ function GenreBreakdown({
   readonly connections: readonly Connection[];
   readonly verseGenres: Uint8Array;
 }) {
+  const { t, n, genreName } = useLocalization();
   if (connections.length === 0) {
     return null;
   }
@@ -390,12 +449,10 @@ function GenreBreakdown({
     <PanelSection
       id="connects-to"
       icon={GenresIcon}
-      title={t('Connects to')}
-      description={t(present.length === 1 ? '{count} genre' : '{count} genres', {
-        count: formatInteger(present.length),
-      })}
+      title={t('panel.connectsTo')}
+      description={t('panel.connectsTo.note')(present.length)}
       count={connections.length}
-      countLabel={t('links')}
+      countLabel={t('panel.linksCounted')}
       defaultOpen={false}
       trailing={
         <span className={styles.strip} aria-hidden="true">
@@ -416,7 +473,7 @@ function GenreBreakdown({
           const count = counts[genre.ordinal] ?? 0;
           return (
             <div key={genre.id} style={{ display: 'contents' }}>
-              <span>{t(genre.name)}</span>
+              <span>{genreName(genre.id)}</span>
               <span
                 className={styles.bar}
                 style={{
@@ -424,7 +481,7 @@ function GenreBreakdown({
                   background: elementAt(GENRE_HEX, genre.ordinal),
                 }}
               />
-              <span className={styles.count}>{formatInteger(count)}</span>
+              <span className={styles.count}>{n(count)}</span>
             </div>
           );
         })}
@@ -452,7 +509,8 @@ function ConnectionSection({
   readonly icon: IconComponent;
   readonly title: string;
   readonly description: string;
-  readonly countLabel: string;
+  /** What the count counts, inflected for it — passed straight to `PanelSection`. */
+  readonly countLabel: (plural: number) => string;
   readonly connections: readonly Connection[];
   readonly showSourceVerse: boolean;
   readonly data: VizData;
@@ -460,6 +518,8 @@ function ConnectionSection({
   readonly onPreview: ((connection: Connection | null) => void) | undefined;
   readonly shareUrl: (passage: Passage) => string;
 }) {
+  const localization = useLocalization();
+  const { t, books, n } = localization;
   const [limit, setLimit] = useState(INITIAL_ITEMS);
   const { versification, translation } = data;
   const visible = connections.slice(0, limit);
@@ -472,8 +532,7 @@ function ConnectionSection({
       count={connections.length}
       countLabel={countLabel}
     >
-      {connections.length === 0 && <p className={styles.muted}>{t('None')}</p>}
-
+      {connections.length === 0 && <p className={styles.muted}>{t('panel.none')}</p>}
       {groupByBook(visible, versification).map((group) => (
         <div
           key={`${group.book}-${String(group.connections[0]?.otherStart)}`}
@@ -484,13 +543,14 @@ function ConnectionSection({
               className={styles.key}
               style={{ background: GENRE_COLORS[getBookGenre(group.book).id] }}
             />
-            {getDisplayBookName(getBook(group.book))}
-            <span className={styles.count}>{formatInteger(group.connections.length)}</span>
+            {books[group.book].name}
+            <span className={styles.count}>{n(group.connections.length)}</span>
           </p>
           {group.connections.map((connection) => {
             const note = landingNote(connection, versification, showSourceVerse);
             const reference = formatVerseIndexRange(
               versification,
+              books,
               connection.otherStart,
               connection.otherEnd,
             );
@@ -520,7 +580,11 @@ function ConnectionSection({
                 >
                   <span className={styles.itemRef}>
                     <strong>{reference}</strong>
-                    {note !== null && <span className={styles.muted}>{note}</span>}
+                    {note !== null && (
+                      <span className={styles.muted}>
+                        {describeLandingNote(note, versification, localization)}
+                      </span>
+                    )}
                   </span>
                   <ConnectionText
                     translation={translation}
@@ -535,6 +599,7 @@ function ConnectionSection({
                     quotePassage({
                       translation,
                       versification,
+                      names: books,
                       start: connection.otherStart,
                       end: connection.otherEnd,
                       url: shareUrl(versePassage(connection.otherStart)),
@@ -554,7 +619,7 @@ function ConnectionSection({
             setLimit(connections.length);
           }}
         >
-          {t('Show all')} {formatInteger(connections.length)}
+          {t('panel.showAll')(n(connections.length))}
           <ExpandIcon />
         </button>
       )}
